@@ -8,8 +8,18 @@ import Sidebar from '@/components/layout/Sidebar';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== 'admin') router.replace('/login');
+    const checkSession = () => {
+      const session = getSession();
+      if (!session || session.role !== 'admin') {
+        router.replace('/login');
+      }
+    };
+    
+    checkSession();
+    
+    // Listen for storage changes from other tabs
+    window.addEventListener('storage', checkSession);
+    return () => window.removeEventListener('storage', checkSession);
   }, [router]);
 
   return (
