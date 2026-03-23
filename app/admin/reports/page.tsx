@@ -24,6 +24,7 @@ export default function ReportsPage() {
   const [isQuerying, setIsQuerying] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportConfig, setExportConfig] = useState<any>(null);
+  const [previewData, setPreviewData] = useState<any[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
@@ -76,6 +77,25 @@ export default function ReportsPage() {
       });
       const data = await res.json();
       setExportConfig(data);
+      
+      // Fetch Preview Data immediately
+      const { type, startDate, endDate, employeeId } = data;
+      let preview: any[] = [];
+      const endDateTime = `${endDate}T23:59:59`;
+
+      if (type === 'attendance' || type === 'all') {
+        let q = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
+        if (employeeId) q = q.eq('user_id', employeeId);
+        const { data: att } = await q.limit(5);
+        if (att) preview = att.map(r => ({ col1: r.date, col2: r.users?.name, col3: r.status }));
+      } else if (type === 'tasks') {
+        let q = supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime);
+        if (employeeId) q = q.eq('assigned_to', employeeId);
+        const { data: tks } = await q.limit(5);
+        if (tks) preview = tks.map(r => ({ col1: r.title, col2: r.users?.name, col3: r.status }));
+      }
+      
+      setPreviewData(preview);
       setShowExportModal(true);
     } catch (error) {
       console.error('AI Query failed:', error);
@@ -91,6 +111,7 @@ export default function ReportsPage() {
       const { type, startDate, endDate, employeeId } = exportConfig;
       let dataToExport: any[] = [];
       let fileName = `report_${type}_${startDate}_to_${endDate}`;
+      const endDateTime = `${endDate}T23:59:59`;
 
       if (type === 'attendance' || type === 'all') {
         let query = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
@@ -108,7 +129,7 @@ export default function ReportsPage() {
           }));
         }
       } else if (type === 'tasks') {
-        let query = supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDate);
+        let query = supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime);
         if (employeeId) query = query.eq('assigned_to', employeeId);
         const { data } = await query;
         if (data) {
@@ -282,8 +303,37 @@ export default function ReportsPage() {
             
             <div>
               <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Target Employee</label>
-              <div style={{ fontWeight: 600 }}>
+              <div style={{ fontWeight: 600, marginBottom: '1.5rem' }}>
                 {exportConfig.employeeId ? (users.find(u => u.id === exportConfig.employeeId)?.name || 'Matching Employee') : 'All Employees'}
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-app)', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>DATA PREVIEW (LATEST 5 RECORDS)</span>
+                <span>{previewData.length > 0 ? '✓ Match Found' : '⚠️ No Records Found'}</span>
+              </div>
+              <div className="table-wrap" style={{ maxHeight: 200 }}>
+                <table className="table" style={{ fontSize: '0.8rem' }}>
+                  <tbody>
+                    {previewData.length > 0 ? (
+                      previewData.map((row, i) => (
+                        <tr key={i}>
+                          <td style={{ padding: '0.5rem 1rem' }}>{row.col1}</td>
+                          <td style={{ padding: '0.5rem 1rem' }}>{row.col2}</td>
+                          <td style={{ padding: '0.5rem 1rem' }}>{row.col3}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                          No data found for this range/employee. <br/>
+                          Try adjusting your request dates.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
