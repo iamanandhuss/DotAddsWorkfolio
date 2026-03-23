@@ -126,22 +126,19 @@ export default function ReportsPage() {
       let dataToExport: any[] = [];
       let fileName = `report_${type}_${startDate}_to_${endDate}`;
       const endDateTime = `${endDate}T23:59:59`;
-
       if (type === 'attendance') {
         let query = supabase.from('attendance_records').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
         if (employeeId) query = query.eq('user_id', employeeId);
         const { data } = await query;
         if (data) {
           dataToExport = data.map((r: any) => ({
-            Type: 'Attendance',
             Date: r.date,
             Employee: r.users?.name,
             Email: r.users?.email,
             Status: r.status,
             CheckIn: r.check_in,
             CheckOut: r.check_out,
-            WorkHours: r.working_hours,
-            Details: ''
+            WorkHours: r.working_hours
           }));
         }
       } else if (type === 'tasks') {
@@ -150,15 +147,13 @@ export default function ReportsPage() {
         const { data } = await query;
         if (data) {
           dataToExport = data.map((r: any) => ({
-            Type: 'Task',
-            Date: r.created_at.split('T')[0],
-            Employee: r.users?.name,
-            Email: '',
+            Created: r.created_at,
+            Title: r.title,
+            Description: r.description,
+            AssignedTo: r.users?.name,
             Status: r.status,
-            CheckIn: '',
-            CheckOut: '',
-            WorkHours: '',
-            Details: `${r.title} (${r.priority} Priority)`
+            Priority: r.priority,
+            Deadline: r.deadline
           }));
         }
       } else if (type === 'employees') {
