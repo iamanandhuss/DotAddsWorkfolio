@@ -8,13 +8,23 @@ import {
 } from 'recharts';
 import Header from '@/components/layout/Header';
 import Avatar from '@/components/layout/Avatar';
+import Modal from '@/components/ui/Modal';
 import { getUsers, getTasks, getAttendance } from '@/lib/store';
+import { downloadCSV } from '@/utils/csvExport';
+import { supabase } from '@/utils/supabase/client';
 import type { User, Task, AttendanceRecord } from '@/types';
 
 export default function ReportsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  
+  // AI Export State
+  const [aiQuery, setAiQuery] = useState('');
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportConfig, setExportConfig] = useState<any>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +65,80 @@ export default function ReportsPage() {
   const deptChart = Object.entries(deptData).map(([name, value]) => ({ name, value }));
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
+  const handleAiQuery = async () => {
+    if (!aiQuery.trim()) return;
+    setIsQuerying(true);
+    try {
+      const res = await fetch('/api/reports/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: aiQuery })
+      });
+      const data = await res.json();
+      setExportConfig(data);
+      setShowExportModal(true);
+    } catch (error) {
+      console.error('AI Query failed:', error);
+      alert('Failed to parse your query. Please try again.');
+    } finally {
+      setIsQuerying(false);
+    }
+  };
+
+  const executeExport = async () => {
+    setIsExporting(true);
+    try {
+      const { type, startDate, endDate, employeeId } = exportConfig;
+      let dataToExport: any[] = [];
+      let fileName = `report_${type}_${startDate}_to_${endDate}`;
+
+      if (type === 'attendance' || type === 'all') {
+        let query = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
+        if (employeeId) query = query.eq('user_id', employeeId);
+        const { data } = await query;
+        if (data) {
+          dataToExport = data.map(r => ({
+            Date: r.date,
+            Employee: r.users?.name,
+            Email: r.users?.email,
+            Status: r.status,
+            CheckIn: r.check_in,
+            CheckOut: r.check_out,
+            WorkHours: r.working_hours
+          }));
+        }
+      } else if (type === 'tasks') {
+        let query = supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDate);
+        if (employeeId) query = query.eq('assigned_to', employeeId);
+        const { data } = await query;
+        if (data) {
+          dataToExport = data.map(r => ({
+            Created: r.created_at,
+            Title: r.title,
+            Description: r.description,
+            AssignedTo: r.users?.name,
+            Status: r.status,
+            Priority: r.priority,
+            Deadline: r.deadline
+          }));
+        }
+      }
+
+      if (dataToExport.length > 0) {
+        downloadCSV(dataToExport, fileName);
+        setShowExportModal(false);
+        setAiQuery('');
+      } else {
+        alert('No data found for the selected filters.');
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to generate report.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <Header title="Reports & Analytics" subtitle="Overall company performance metrics" />
@@ -64,9 +148,20 @@ export default function ReportsPage() {
             <h2 className="page-title">Performance Overview</h2>
             <p className="page-subtitle">Metrics for all time</p>
           </div>
-          <button className="btn btn-secondary">
-            <Download size={16} /> Export CSV
-          </button>
+          
+          <div className="card" style={{ padding: '0.75rem', display: 'flex', gap: '0.75rem', width: '100%', maxWidth: 500, background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+            <input 
+              className="input" 
+              placeholder="Ask AI: 'Export attendance for John in March'..." 
+              style={{ border: 'none', background: 'transparent' }}
+              value={aiQuery}
+              onChange={e => setAiQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAiQuery()}
+            />
+            <button className="btn btn-primary" onClick={handleAiQuery} disabled={isQuerying || !aiQuery.trim()}>
+              {isQuerying ? 'Analyzing...' : 'Generate Report'}
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
@@ -153,6 +248,47 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
+
+      {showExportModal && exportConfig && (
+        <Modal
+          title="Confirm AI Report Export"
+          onClose={() => setShowExportModal(false)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setShowExportModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={executeExport} disabled={isExporting}>
+                {isExporting ? 'Generating CSV...' : 'Confirm & Download'}
+              </button>
+            </>
+          }
+        >
+          <div style={{ padding: '0.5rem' }}>
+            <div className="card" style={{ background: 'rgba(59,130,246,0.05)', border: '1px dashed var(--brand-500)', marginBottom: '1.5rem' }}>
+              <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, color: 'var(--brand-600)' }}>
+                ✨ {exportConfig.explanation}
+              </p>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Report Type</label>
+                <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{exportConfig.type}</div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Time Period</label>
+                <div style={{ fontWeight: 600 }}>{exportConfig.startDate} to {exportConfig.endDate}</div>
+              </div>
+            </div>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>Target Employee</label>
+              <div style={{ fontWeight: 600 }}>
+                {exportConfig.employeeId ? (users.find(u => u.id === exportConfig.employeeId)?.name || 'Matching Employee') : 'All Employees'}
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
