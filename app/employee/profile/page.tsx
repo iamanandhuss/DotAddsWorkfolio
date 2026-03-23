@@ -13,7 +13,9 @@ export default function EmployeeProfilePage() {
 
   useEffect(() => {
     const session = getSession();
-    if (session) setProfile(getUserById(session.userId) || null);
+    if (session) {
+      getUserById(session.userId).then(u => setProfile(u || null));
+    }
   }, []);
 
   if (!profile) return null;

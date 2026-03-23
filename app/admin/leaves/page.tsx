@@ -15,8 +15,18 @@ export default function LeavesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<LeaveStatus | 'all'>('all');
 
-  const load = () => { setLeaves(getLeaves().sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))); };
-  useEffect(() => { load(); setEmployees(getUsers().filter(u => u.role === 'employee')); }, []);
+  const load = async () => { 
+    const data = await getLeaves();
+    setLeaves(data.sort((a, b) => b.appliedAt.localeCompare(a.appliedAt))); 
+  };
+  useEffect(() => { 
+    load(); 
+    const fetchUsers = async () => {
+      const u = await getUsers();
+      setEmployees(u.filter(x => x.role === 'employee'));
+    };
+    fetchUsers();
+  }, []);
 
   const session = getSession();
 
@@ -27,9 +37,9 @@ export default function LeavesPage() {
     return true;
   });
 
-  const handleAction = (leave: LeaveRequest, status: LeaveStatus) => {
+  const handleAction = async (leave: LeaveRequest, status: LeaveStatus) => {
     if (!session) return;
-    updateLeave({
+    await updateLeave({
       ...leave,
       status,
       reviewedBy: session.userId,

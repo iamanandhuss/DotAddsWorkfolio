@@ -16,35 +16,38 @@ export default function EmployeeDashboard() {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const s = getSession();
-    if (s) {
-      setSession(s);
-      setTasks(getTasksByUser(s.userId));
-      setAttendance(getTodayAttendance(s.userId));
-    }
+    const fetchEm = async () => {
+      const s = getSession();
+      if (s) {
+        setSession(s);
+        setTasks(await getTasksByUser(s.userId));
+        setAttendance(await getTodayAttendance(s.userId));
+      }
+    };
+    fetchEm();
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!session) return;
     const nowStr = new Date().toTimeString().slice(0, 5);
     const dateStr = new Date().toISOString().split('T')[0];
-    saveAttendance({
+    await saveAttendance({
       id: generateId(), date: dateStr, userId: session.userId, status: 'present', checkIn: nowStr
     });
-    setAttendance(getTodayAttendance(session.userId));
+    setAttendance(await getTodayAttendance(session.userId));
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!attendance || !session) return;
     const nowStr = new Date().toTimeString().slice(0, 5);
     const inDate = new Date(`1970-01-01T${attendance.checkIn}:00`);
     const outDate = new Date(`1970-01-01T${nowStr}:00`);
     const hrs = Math.round(((outDate.getTime() - inDate.getTime()) / 1000 / 60 / 60) * 10) / 10;
 
-    saveAttendance({ ...attendance, checkOut: nowStr, workingHours: Math.max(0, hrs) });
-    setAttendance(getTodayAttendance(session.userId));
+    await saveAttendance({ ...attendance, checkOut: nowStr, workingHours: Math.max(0, hrs) });
+    setAttendance(await getTodayAttendance(session.userId));
   };
 
   if (!session) return null;

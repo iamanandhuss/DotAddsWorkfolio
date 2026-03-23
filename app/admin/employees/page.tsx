@@ -24,7 +24,10 @@ export default function EmployeesPage() {
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [form, setForm] = useState(emptyForm());
 
-  const load = () => setUsers(getUsers().filter(u => u.role === 'employee'));
+  const load = async () => {
+    const u = await getUsers();
+    setUsers(u.filter(x => x.role === 'employee'));
+  };
   useEffect(() => { load(); }, []);
 
   const filtered = users.filter(u =>
@@ -36,19 +39,19 @@ export default function EmployeesPage() {
   const openAdd = () => { setForm(emptyForm()); setShowAdd(true); };
   const openEdit = (u: User) => { setEditUser(u); setForm({ name: u.name, email: u.email, password: u.password, department: u.department, position: u.position, phone: u.phone, joinDate: u.joinDate }); };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editUser) {
-      updateUser({ ...editUser, ...form });
+      await updateUser({ ...editUser, ...form });
       setEditUser(null);
     } else {
-      addUser({ id: generateId(), role: 'employee', ...form });
+      await addUser({ id: generateId(), role: 'employee', ...form });
       setShowAdd(false);
     }
     load();
   };
 
-  const handleDelete = () => {
-    if (confirmDelete) { deleteUser(confirmDelete.id); setConfirmDelete(null); load(); }
+  const handleDelete = async () => {
+    if (confirmDelete) { await deleteUser(confirmDelete.id); setConfirmDelete(null); load(); }
   };
 
   const field = (key: keyof typeof form, label: string, type = 'text', opts?: string[]) => (

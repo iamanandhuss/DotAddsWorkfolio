@@ -16,12 +16,13 @@ export default function LoginPage() {
 
   useEffect(() => { ensureSeeded(); }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      const session = login(email.trim(), password);
+
+    try {
+      const session = await login(email.trim(), password);
       if (!session) {
         setError('Invalid email or password. Please try again.');
         setLoading(false);
@@ -29,7 +30,11 @@ export default function LoginPage() {
       }
       if (session.role === 'admin') router.replace('/admin');
       else router.replace('/employee');
-    }, 500);
+    } catch (err) {
+      console.error(err);
+      setError('An error occurred during sign in.');
+      setLoading(false);
+    }
   };
 
   return (

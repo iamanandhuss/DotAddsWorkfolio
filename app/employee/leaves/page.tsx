@@ -7,23 +7,31 @@ import Modal from '@/components/ui/Modal';
 import { LeaveStatusBadge } from '@/components/ui/Badges';
 import { getLeavesByUser, addLeave, generateId, getUsers } from '@/lib/store';
 import { getSession } from '@/lib/auth';
-import type { LeaveRequest, LeaveType } from '@/types';
+import type { LeaveRequest, LeaveType, User } from '@/types';
 
 export default function EmployeeLeavesPage() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ type: 'sick' as LeaveType, fromDate: '', toDate: '', reason: '' });
 
-  const load = () => {
-    const session = getSession();
-    if (session) setLeaves(getLeavesByUser(session.userId).sort((a,b) => b.appliedAt.localeCompare(a.appliedAt)));
-  };
-  useEffect(() => { load(); }, []);
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
 
-  const handleApply = () => {
+  const load = async () => {
+    const session = getSession();
+    if (session) {
+      const data = await getLeavesByUser(session.userId);
+      setLeaves(data.sort((a,b) => b.appliedAt.localeCompare(a.appliedAt)));
+    }
+  };
+  useEffect(() => { 
+    load(); 
+    getUsers().then(u => setAdminUsers(u));
+  }, []);
+
+  const handleApply = async () => {
     const session = getSession();
     if (!session || !form.fromDate || !form.toDate || !form.reason) return;
-    addLeave({
+    await addLeave({
       id: generateId(),
       userId: session.userId,
       status: 'pending',
@@ -37,7 +45,7 @@ export default function EmployeeLeavesPage() {
 
   const getUserName = (id?: string) => {
     if (!id) return '';
-    return getUsers().find(u => u.id === id)?.name || 'Admin';
+    return adminUsers.find(u => u.id === id)?.name || 'Admin';
   };
 
   return (

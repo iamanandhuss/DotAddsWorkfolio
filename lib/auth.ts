@@ -5,8 +5,8 @@ import { getUsers } from './store';
 
 const SESSION_KEY = 'ems_session';
 
-export function login(email: string, password: string): AuthSession | null {
-  const users = getUsers();
+export async function login(email: string, password: string): Promise<AuthSession | null> {
+  const users = await getUsers();
   const user = users.find(
     (u: User) => u.email === email && u.password === password
   );

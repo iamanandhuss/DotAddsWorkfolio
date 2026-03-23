@@ -10,14 +10,17 @@ import type { Task, TaskStatus } from '@/types';
 export default function EmployeeTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
-  const load = () => {
+  const load = async () => {
     const session = getSession();
-    if (session) setTasks(getTasksByUser(session.userId).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)));
+    if (session) {
+      const data = await getTasksByUser(session.userId);
+      setTasks(data.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt)));
+    }
   };
   useEffect(() => { load(); }, []);
 
-  const changeStatus = (task: Task, status: TaskStatus) => {
-    updateTask({ ...task, status, updatedAt: new Date().toISOString().split('T')[0] });
+  const changeStatus = async (task: Task, status: TaskStatus) => {
+    await updateTask({ ...task, status, updatedAt: new Date().toISOString().split('T')[0] });
     load();
   };
 

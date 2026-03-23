@@ -19,10 +19,14 @@ export default function AdminDashboard() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers().filter(u => u.role === 'employee'));
-    setTasks(getTasks());
-    setAttendance(getAttendance());
-    setLeaves(getLeaves());
+    const fetchData = async () => {
+      const u = await getUsers();
+      setUsers(u.filter(user => user.role === 'employee'));
+      setTasks(await getTasks());
+      setAttendance(await getAttendance());
+      setLeaves(await getLeaves());
+    };
+    fetchData();
   }, []);
 
   const today = new Date().toISOString().split('T')[0];

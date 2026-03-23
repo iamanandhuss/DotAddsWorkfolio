@@ -13,7 +13,9 @@ export default function EmployeeAttendancePage() {
   useEffect(() => {
     const session = getSession();
     if (session) {
-      setRecords(getAttendanceByUser(session.userId).sort((a,b) => b.date.localeCompare(a.date)));
+      getAttendanceByUser(session.userId).then(data => 
+        setRecords(data.sort((a,b) => b.date.localeCompare(a.date)))
+      );
     }
   }, []);
 

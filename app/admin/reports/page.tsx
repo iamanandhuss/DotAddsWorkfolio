@@ -17,9 +17,13 @@ export default function ReportsPage() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
 
   useEffect(() => {
-    setUsers(getUsers().filter(u => u.role === 'employee'));
-    setTasks(getTasks());
-    setAttendance(getAttendance());
+    const fetchData = async () => {
+      const u = await getUsers();
+      setUsers(u.filter(user => user.role === 'employee'));
+      setTasks(await getTasks());
+      setAttendance(await getAttendance());
+    };
+    fetchData();
   }, []);
 
   const totalTasks = tasks.length;

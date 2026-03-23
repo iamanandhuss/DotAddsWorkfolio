@@ -23,10 +23,14 @@ export default function TasksPage() {
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
   const [form, setForm] = useState({ title: '', description: '', assignedTo: '', priority: 'medium' as TaskPriority, deadline: '' });
 
-  const load = () => { setTasks(getTasks()); };
+  const load = async () => { setTasks(await getTasks()); };
   useEffect(() => {
     load();
-    setEmployees(getUsers().filter(u => u.role === 'employee'));
+    const fetchUsers = async () => {
+      const u = await getUsers();
+      setEmployees(u.filter(user => user.role === 'employee'));
+    };
+    fetchUsers();
   }, []);
 
   const session = getSession();
@@ -37,10 +41,10 @@ export default function TasksPage() {
 
   const byStatus = (status: TaskStatus) => filtered.filter(t => t.status === status);
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (!form.title || !form.assignedTo || !form.deadline) return;
     const now = new Date().toISOString().split('T')[0];
-    addTask({
+    await addTask({
       id: generateId(),
       title: form.title,
       description: form.description,
@@ -57,13 +61,13 @@ export default function TasksPage() {
     load();
   };
 
-  const changeStatus = (task: Task, status: TaskStatus) => {
-    updateTask({ ...task, status, updatedAt: new Date().toISOString().split('T')[0] });
+  const changeStatus = async (task: Task, status: TaskStatus) => {
+    await updateTask({ ...task, status, updatedAt: new Date().toISOString().split('T')[0] });
     load();
   };
 
-  const handleDelete = () => {
-    if (confirmDelete) { deleteTask(confirmDelete.id); setConfirmDelete(null); load(); }
+  const handleDelete = async () => {
+    if (confirmDelete) { await deleteTask(confirmDelete.id); setConfirmDelete(null); load(); }
   };
 
   const getEmpName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';

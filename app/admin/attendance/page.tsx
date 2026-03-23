@@ -16,8 +16,11 @@ export default function AttendancePage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [editRecord, setEditRecord] = useState<AttendanceRecord | null>(null);
 
-  const load = () => { setRecords(getAttendance()); };
-  useEffect(() => { load(); setEmployees(getUsers().filter(u => u.role === 'employee')); }, []);
+  const load = async () => { setRecords(await getAttendance()); };
+  useEffect(() => { 
+    load(); 
+    getUsers().then(u => setEmployees(u.filter(x => x.role === 'employee'))); 
+  }, []);
 
   const dailyRecords = employees.map(emp => {
     const existing = records.find(r => r.userId === emp.id && r.date === date);
@@ -36,8 +39,8 @@ export default function AttendancePage() {
     return true;
   });
 
-  const handleSave = () => {
-    if (editRecord) { saveAttendance(editRecord); setEditRecord(null); load(); }
+  const handleSave = async () => {
+    if (editRecord) { await saveAttendance(editRecord); setEditRecord(null); load(); }
   };
 
   const getEmpName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
