@@ -63,3 +63,13 @@ export interface AuthSession {
   name: string;
   email: string;
 }
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'task_assigned' | 'status_change' | 'leave_request';
+  isRead: boolean;
+  createdAt: string;
+}

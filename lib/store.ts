@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase/client';
-import type { User, Task, AttendanceRecord, LeaveRequest } from '@/types';
+import type { User, Task, AttendanceRecord, LeaveRequest, AppNotification } from '@/types';
 import { SEED_USERS } from './seed';
 
 // ─── Utility Data Mappers ──────────────────────────────────────────────────
@@ -50,6 +50,16 @@ const mapLeave = (row: any): LeaveRequest => ({
   appliedAt: row.applied_at,
   reviewedBy: row.reviewed_by || undefined,
   reviewedAt: row.reviewed_at || undefined,
+});
+
+const mapNotification = (row: any): AppNotification => ({
+  id: row.id,
+  userId: row.user_id,
+  title: row.title,
+  message: row.message,
+  type: row.type,
+  isRead: row.is_read,
+  createdAt: row.created_at,
 });
 
 export async function ensureSeeded(): Promise<void> {
@@ -235,6 +245,30 @@ export const updateLeave = async (updated: LeaveRequest): Promise<void> => {
     reviewed_by: updated.reviewedBy,
     reviewed_at: updated.reviewedAt,
   }).eq('id', updated.id);
+};
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const getNotifications = async (userId: string): Promise<AppNotification[]> => {
+  const { data } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  return (data || []).map(mapNotification);
+};
+
+export const addNotification = async (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>): Promise<void> => {
+  await supabase.from('notifications').insert([{
+    user_id: notif.userId,
+    title: notif.title,
+    message: notif.message,
+    type: notif.type,
+    is_read: false,
+  }]);
+};
+
+export const markNotificationRead = async (id: string): Promise<void> => {
+  await supabase.from('notifications').update({ is_read: true }).eq('id', id);
 };
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

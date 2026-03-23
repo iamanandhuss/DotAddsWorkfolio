@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import Avatar from './Avatar';
+import NotificationBell from '../ui/NotificationBell';
 import { getSession } from '@/lib/auth';
 import type { AuthSession } from '@/types';
 
@@ -21,9 +22,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
         {subtitle && <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{subtitle}</p>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <button className="btn-icon btn-secondary btn" data-tooltip="Notifications">
-          <Bell size={17} />
-        </button>
+        <NotificationBell />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Avatar name={session?.name || '?'} size="sm" />
           <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{session?.name}</span>

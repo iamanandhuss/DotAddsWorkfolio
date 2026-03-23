@@ -45,6 +45,19 @@ export default function LeavesPage() {
       reviewedBy: session.userId,
       reviewedAt: new Date().toISOString().split('T')[0],
     });
+
+    // Notify Employee via AI
+    fetch('/api/notify/general', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'leave_response',
+        userId: session.userId,
+        targetUserId: leave.userId,
+        data: { status, fromDate: leave.fromDate, toDate: leave.toDate }
+      })
+    }).catch(err => console.error('Failed to notify employee:', err));
+
     load();
   };
 

@@ -38,6 +38,18 @@ export default function EmployeeLeavesPage() {
       appliedAt: new Date().toISOString().split('T')[0],
       ...form,
     });
+
+    // Notify Admin via AI
+    fetch('/api/notify/general', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'leave_request',
+        userId: session.userId,
+        data: { leaveType: form.type, fromDate: form.fromDate, toDate: form.toDate }
+      })
+    }).catch(err => console.error('Failed to notify admin:', err));
+
     setShowAdd(false);
     setForm({ type: 'sick', fromDate: '', toDate: '', reason: '' });
     load();

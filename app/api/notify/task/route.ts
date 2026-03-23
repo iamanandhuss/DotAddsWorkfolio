@@ -81,6 +81,15 @@ Write a short, friendly, and professional email notification message (max 3-4 se
 
     console.log(`[Email] Message sent to ${user.email}: ${info.messageId}`);
 
+    // 5. Also Create In-App Notification
+    await supabase.from('notifications').insert([{
+      user_id: user.id,
+      title: `New Task: ${task.title}`,
+      message: aiMessage,
+      type: 'task_assigned',
+      is_read: false
+    }]);
+
     return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error: any) {
     console.error('Error in notify/task:', error);

@@ -21,6 +21,21 @@ export default function EmployeeTasksPage() {
 
   const changeStatus = async (task: Task, status: TaskStatus) => {
     await updateTask({ ...task, status, updatedAt: new Date().toISOString().split('T')[0] });
+    
+    // Notify Admin via AI
+    const session = getSession();
+    if (session) {
+      fetch('/api/notify/general', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'status_change',
+          userId: session.userId,
+          data: { taskTitle: task.title, newStatus: status }
+        })
+      }).catch(err => console.error('Failed to notify admin:', err));
+    }
+    
     load();
   };
 
