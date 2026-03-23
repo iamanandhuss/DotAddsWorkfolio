@@ -93,6 +93,20 @@ export default function ReportsPage() {
         if (employeeId) q = q.eq('assigned_to', employeeId);
         const { data: tks } = await q.limit(5);
         if (tks) preview = tks.map(r => ({ col1: r.title, col2: r.users?.name, col3: r.status }));
+      } else if (type === 'employees') {
+        let q = supabase.from('users').select('*').eq('role', 'employee');
+        if (employeeId) q = q.eq('id', employeeId);
+        const { data: emps } = await q.limit(5);
+        if (emps) preview = emps.map((r: any) => ({ col1: r.name, col2: r.department, col3: r.position }));
+      } else if (type === 'all') {
+        const [a, t] = await Promise.all([
+          supabase.from('attendance').select('*, users(name)').gte('date', startDate).lte('date', endDate).limit(2),
+          supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime).limit(3)
+        ]);
+        preview = [
+          ...(a.data || []).map((r: any) => ({ col1: r.date, col2: r.users?.name, col3: 'Attendance' })),
+          ...(t.data || []).map((r: any) => ({ col1: r.title, col2: r.users?.name, col3: 'Task' }))
+        ];
       }
       
       setPreviewData(preview);
@@ -113,19 +127,21 @@ export default function ReportsPage() {
       let fileName = `report_${type}_${startDate}_to_${endDate}`;
       const endDateTime = `${endDate}T23:59:59`;
 
-      if (type === 'attendance' || type === 'all') {
+      if (type === 'attendance') {
         let query = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
         if (employeeId) query = query.eq('user_id', employeeId);
         const { data } = await query;
         if (data) {
-          dataToExport = data.map(r => ({
+          dataToExport = data.map((r: any) => ({
+            Type: 'Attendance',
             Date: r.date,
             Employee: r.users?.name,
             Email: r.users?.email,
             Status: r.status,
             CheckIn: r.check_in,
             CheckOut: r.check_out,
-            WorkHours: r.working_hours
+            WorkHours: r.working_hours,
+            Details: ''
           }));
         }
       } else if (type === 'tasks') {
@@ -133,16 +149,65 @@ export default function ReportsPage() {
         if (employeeId) query = query.eq('assigned_to', employeeId);
         const { data } = await query;
         if (data) {
-          dataToExport = data.map(r => ({
-            Created: r.created_at,
-            Title: r.title,
-            Description: r.description,
-            AssignedTo: r.users?.name,
+          dataToExport = data.map((r: any) => ({
+            Type: 'Task',
+            Date: r.created_at.split('T')[0],
+            Employee: r.users?.name,
+            Email: '',
             Status: r.status,
-            Priority: r.priority,
-            Deadline: r.deadline
+            CheckIn: '',
+            CheckOut: '',
+            WorkHours: '',
+            Details: `${r.title} (${r.priority} Priority)`
           }));
         }
+      } else if (type === 'employees') {
+        let query = supabase.from('users').select('*').eq('role', 'employee');
+        if (employeeId) query = query.eq('id', employeeId);
+        const { data: emps } = await query;
+        if (emps) {
+          dataToExport = emps.map((r: any) => ({
+            ID: r.id,
+            Name: r.name,
+            Email: r.email,
+            Department: r.department,
+            Position: r.position,
+            Phone: r.phone,
+            JoinDate: r.joinDate
+          }));
+        }
+      } else if (type === 'all') {
+        // Unified Master Report
+        const [attRes, taskRes, leaveRes] = await Promise.all([
+          supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate).order('date'),
+          supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime).order('created_at'),
+          supabase.from('leaves').select('*, users(name)').gte('from_date', startDate).lte('from_date', endDate).order('from_date')
+        ]);
+
+        const combined = [
+          ...(attRes.data || []).map((r: any) => ({
+            Type: 'Attendance',
+            Date: r.date,
+            Employee: r.users?.name,
+            Status: r.status,
+            Details: `Check ${r.check_in || 'N/A'} - ${r.check_out || 'N/A'}`
+          })),
+          ...(taskRes.data || []).map((r: any) => ({
+            Type: 'Task',
+            Date: r.created_at.split('T')[0],
+            Employee: r.users?.name,
+            Status: r.status,
+            Details: `${r.title} [${r.priority}]`
+          })),
+          ...(leaveRes.data || []).map((r: any) => ({
+            Type: 'Leave',
+            Date: r.from_date,
+            Employee: r.users?.name,
+            Status: r.status,
+            Details: `${r.type} leave: ${r.reason}`
+          }))
+        ];
+        dataToExport = combined.sort((a, b) => a.Date.localeCompare(b.Date));
       }
 
       if (dataToExport.length > 0) {
