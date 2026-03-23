@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -8,6 +9,7 @@ import {
   Building2
 } from 'lucide-react';
 import { logout, getSession } from '@/lib/auth';
+import type { AuthSession } from '@/types';
 import { getInitials, avatarColor } from './Avatar';
 
 interface NavItemDef {
@@ -40,7 +42,9 @@ interface SidebarProps {
 export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const session = getSession();
+  
+  const [session, setSession] = useState<AuthSession | null>(null);
+  useEffect(() => { setSession(getSession()); }, []);
   const nav = role === 'admin' ? adminNav : employeeNav;
 
   const handleLogout = () => {

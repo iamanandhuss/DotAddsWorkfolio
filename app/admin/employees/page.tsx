@@ -153,7 +153,10 @@ export default function EmployeesPage() {
               {field('name', 'Full Name')}
               {field('email', 'Email Address', 'email')}
               {field('password', 'Password', 'password')}
-              {field('phone', 'Phone Number', 'tel')}
+              <div className="form-group">
+                <label className="form-label">Phone Number (include country code, e.g. +91)</label>
+                <input type="tel" className="input" placeholder="+91 98765..." value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} required />
+              </div>
               {field('department', 'Department', 'text', DEPARTMENTS)}
               {field('position', 'Position', 'text', POSITIONS)}
               {field('joinDate', 'Join Date', 'date')}

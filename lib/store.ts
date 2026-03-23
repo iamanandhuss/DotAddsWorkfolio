@@ -130,6 +130,14 @@ export const addTask = async (task: Task): Promise<void> => {
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   }]);
+
+  if (typeof window !== 'undefined') {
+    fetch('/api/notify/task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId: task.id })
+    }).catch(err => console.error('Failed to trigger Email notification:', err));
+  }
 };
 
 export const updateTask = async (updated: Task): Promise<void> => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Trash2, Send } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Avatar from '@/components/layout/Avatar';
 import Modal from '@/components/ui/Modal';
@@ -21,6 +21,7 @@ export default function TasksPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [viewTask, setViewTask] = useState<Task | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
+  const [notifying, setNotifying] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', assignedTo: '', priority: 'medium' as TaskPriority, deadline: '' });
 
   const load = async () => { setTasks(await getTasks()); };
@@ -69,6 +70,24 @@ export default function TasksPage() {
   const handleDelete = async () => {
     if (confirmDelete) { await deleteTask(confirmDelete.id); setConfirmDelete(null); load(); }
   };
+  
+  const handleNotify = async (e: React.MouseEvent, task: Task) => {
+    e.stopPropagation();
+    setNotifying(task.id);
+    try {
+      const res = await fetch('/api/notify/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId: task.id })
+      });
+      if (res.ok) alert('Email AI Notification sent successfully!');
+      else alert('Failed to send notification. Please check console.');
+    } catch {
+      alert('Network error while notifying.');
+    } finally {
+      setNotifying(null);
+    }
+  };
 
   const getEmpName = (id: string) => employees.find(e => e.id === id)?.name || 'Unknown';
 
@@ -113,13 +132,24 @@ export default function TasksPage() {
                   <div key={task.id} className="task-card" onClick={() => setViewTask(task)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
                       <span style={{ fontWeight: 600, fontSize: '0.875rem', flex: 1 }}>{task.title}</span>
-                      <button
-                        className="btn btn-icon btn-danger btn-sm"
-                        onClick={e => { e.stopPropagation(); setConfirmDelete(task); }}
-                        style={{ padding: '0.2rem', flexShrink: 0 }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                        <button
+                          title="Notify Employee via AI Email"
+                          className="btn btn-icon btn-secondary btn-sm"
+                          onClick={e => handleNotify(e, task)}
+                          style={{ padding: '0.2rem', borderColor: 'var(--brand-200)' }}
+                          disabled={notifying === task.id}
+                        >
+                          <Send size={12} color={notifying === task.id ? 'var(--text-muted)' : 'var(--brand-500)'} />
+                        </button>
+                        <button
+                          className="btn btn-icon btn-danger btn-sm"
+                          onClick={e => { e.stopPropagation(); setConfirmDelete(task); }}
+                          style={{ padding: '0.2rem' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                       {task.description.slice(0, 80)}{task.description.length > 80 ? '…' : ''}

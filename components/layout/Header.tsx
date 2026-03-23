@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Bell, Menu } from 'lucide-react';
 import Avatar from './Avatar';
 import { getSession } from '@/lib/auth';
+import type { AuthSession } from '@/types';
 
 interface HeaderProps {
   title: string;
@@ -10,7 +12,8 @@ interface HeaderProps {
 }
 
 export default function Header({ title, subtitle }: HeaderProps) {
-  const session = getSession();
+  const [session, setSession] = useState<AuthSession | null>(null);
+  useEffect(() => { setSession(getSession()); }, []);
   return (
     <header className="top-header">
       <div style={{ flex: 1 }}>
