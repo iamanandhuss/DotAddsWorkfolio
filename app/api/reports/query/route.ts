@@ -42,9 +42,14 @@ Return ONLY a JSON object with:
 Guidelines:
 1. If NO date range is mentioned (e.g. "all tasks"), use startDate: "2024-01-01" and endDate: "${new Date().toISOString().split('T')[0]}".
 2. "This month" means from the 1st of the current month ${new Date().toISOString().split('-').slice(0, 2).join('-')}-01 to today.
-3. "Today" means startDate and endDate are both ${new Date().toISOString().split('T')[0]}.
-4. If specifically asking for "employees" or "employee details", use type: 'employees'. 
-5. If asking for everything OR "all details" OR "flexibility", use type: 'all'.
+3. "Last month" means the ENTIRE previous month. (For March 2026, it would be 2026-02-01 to 2026-02-28).
+4. "Last week" means the last 7 days from today.
+5. "Today" means startDate and endDate are both ${new Date().toISOString().split('T')[0]}.
+6. If specifically asking for "employees" or "employee details", use type: 'employees'. 
+7. If asking for everything OR "all details" OR "flexibility", use type: 'all'.
+
+Example Query: "Tasks for last month"
+Example Response: { "type": "tasks", "startDate": "2026-02-01", "endDate": "2026-02-28", "employeeId": null, "explanation": "Exporting all tasks created during February 2026." }
 
 Example Query: "get attentance of employee this month"
 Example Response: { "type": "attendance", "startDate": "${new Date().toISOString().split('-').slice(0, 2).join('-')}-01", "endDate": "${new Date().toISOString().split('T')[0]}", "employeeId": null, "explanation": "Exporting all employee attendance records for the current month." }
