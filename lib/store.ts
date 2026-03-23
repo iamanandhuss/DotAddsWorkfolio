@@ -274,3 +274,41 @@ export const markNotificationRead = async (id: string): Promise<void> => {
 // ─── Utility ─────────────────────────────────────────────────────────────────
 export const generateId = (): string =>
   Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+
+// ─── Config (Departments & Positions) ────────────────────────────────────────
+const DEFAULT_DEPARTMENTS = ['Management', 'Design', 'Development', 'Marketing', 'HR', 'Finance', 'Sales'];
+const DEFAULT_POSITIONS = ['UI/UX Designer', 'Frontend Developer', 'Backend Developer', 'Marketing Executive', 'HR Manager', 'Accountant', 'Sales Executive', 'Project Manager'];
+
+async function getConfigList(key: string, defaults: string[]): Promise<string[]> {
+  const { data, error } = await supabase.from('config').select('value').eq('key', key).maybeSingle();
+  if (error || !data) return defaults;
+  try {
+    const parsed = JSON.parse(data.value);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+async function setConfigList(key: string, list: string[]): Promise<void> {
+  await supabase.from('config').upsert([{ key, value: JSON.stringify(list) }], { onConflict: 'key' });
+}
+
+export const getDepartments = (): Promise<string[]> => getConfigList('departments', DEFAULT_DEPARTMENTS);
+export const getPositions = (): Promise<string[]> => getConfigList('positions', DEFAULT_POSITIONS);
+
+export async function addDepartment(name: string): Promise<string[]> {
+  const current = await getDepartments();
+  if (current.map(d => d.toLowerCase()).includes(name.toLowerCase())) return current;
+  const updated = [...current, name];
+  await setConfigList('departments', updated);
+  return updated;
+}
+
+export async function addPosition(name: string): Promise<string[]> {
+  const current = await getPositions();
+  if (current.map(p => p.toLowerCase()).includes(name.toLowerCase())) return current;
+  const updated = [...current, name];
+  await setConfigList('positions', updated);
+  return updated;
+}
