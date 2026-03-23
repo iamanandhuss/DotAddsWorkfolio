@@ -67,6 +67,7 @@ Example Response: { "type": "tasks", "startDate": "2026-03-16", "endDate": "2026
     });
 
     const result = JSON.parse(completion.choices[0].message.content || '{}');
+    console.log('AI Query Result:', result);
 
     return NextResponse.json(result);
   } catch (error: any) {

@@ -83,8 +83,8 @@ export default function ReportsPage() {
       let preview: any[] = [];
       const endDateTime = `${endDate}T23:59:59`;
 
-      if (type === 'attendance' || type === 'all') {
-        let q = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
+      if (type === 'attendance') {
+        let q = supabase.from('attendance_records').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
         if (employeeId) q = q.eq('user_id', employeeId);
         const { data: att } = await q.limit(5);
         if (att) preview = att.map(r => ({ col1: r.date, col2: r.users?.name, col3: r.status }));
@@ -100,7 +100,7 @@ export default function ReportsPage() {
         if (emps) preview = emps.map((r: any) => ({ col1: r.name, col2: r.department, col3: r.position }));
       } else if (type === 'all') {
         const [a, t] = await Promise.all([
-          supabase.from('attendance').select('*, users(name)').gte('date', startDate).lte('date', endDate).limit(2),
+          supabase.from('attendance_records').select('*, users(name)').gte('date', startDate).lte('date', endDate).limit(2),
           supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime).limit(3)
         ]);
         preview = [
@@ -128,7 +128,7 @@ export default function ReportsPage() {
       const endDateTime = `${endDate}T23:59:59`;
 
       if (type === 'attendance') {
-        let query = supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
+        let query = supabase.from('attendance_records').select('*, users(name, email)').gte('date', startDate).lte('date', endDate);
         if (employeeId) query = query.eq('user_id', employeeId);
         const { data } = await query;
         if (data) {
@@ -179,9 +179,9 @@ export default function ReportsPage() {
       } else if (type === 'all') {
         // Unified Master Report
         const [attRes, taskRes, leaveRes] = await Promise.all([
-          supabase.from('attendance').select('*, users(name, email)').gte('date', startDate).lte('date', endDate).order('date'),
+          supabase.from('attendance_records').select('*, users(name, email)').gte('date', startDate).lte('date', endDate).order('date'),
           supabase.from('tasks').select('*, users(name)').gte('created_at', startDate).lte('created_at', endDateTime).order('created_at'),
-          supabase.from('leaves').select('*, users(name)').gte('from_date', startDate).lte('from_date', endDate).order('from_date')
+          supabase.from('leave_requests').select('*, users(name)').gte('from_date', startDate).lte('from_date', endDate).order('from_date')
         ]);
 
         const combined = [
