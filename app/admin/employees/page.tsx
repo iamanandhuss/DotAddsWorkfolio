@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, UserCheck, Eye, EyeOff } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Avatar from '@/components/layout/Avatar';
 import Modal from '@/components/ui/Modal';
@@ -23,6 +23,7 @@ export default function EmployeesPage() {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [form, setForm] = useState(emptyForm());
+  const [showPassword, setShowPassword] = useState(false);
 
   const load = async () => {
     const u = await getUsers();
@@ -54,13 +55,42 @@ export default function EmployeesPage() {
     if (confirmDelete) { await deleteUser(confirmDelete.id); setConfirmDelete(null); load(); }
   };
 
-  const field = (key: keyof typeof form, label: string, type = 'text', opts?: string[]) => (
+   const field = (key: keyof typeof form, label: string, type = 'text', opts?: string[]) => (
     <div className="form-group">
       <label className="form-label">{label}</label>
       {opts ? (
         <select className="select" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}>
           {opts.map(o => <option key={o}>{o}</option>)}
         </select>
+      ) : key === 'password' ? (
+        <div style={{ position: 'relative' }}>
+          <input 
+            type={showPassword ? 'text' : 'password'} 
+            className="input" 
+            style={{ paddingRight: '2.5rem' }}
+            value={form[key]} 
+            onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} 
+            required 
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: 'absolute',
+              right: '0.75rem',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              color: 'var(--text-muted)',
+              display: 'flex'
+            }}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
       ) : (
         <input type={type} className="input" value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} required />
       )}

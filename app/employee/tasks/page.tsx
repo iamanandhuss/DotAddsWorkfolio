@@ -65,6 +65,7 @@ export default function EmployeeTasksPage() {
                           style={{ width: 140 }}
                           value={task.status}
                           onChange={e => changeStatus(task, e.target.value as TaskStatus)}
+                          disabled={task.status === 'completed'}
                         >
                           <option value="pending">Pending</option>
                           <option value="in-progress">In Progress</option>

@@ -19,6 +19,7 @@ export default function TasksPage() {
   const [employees, setEmployees] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [viewTask, setViewTask] = useState<Task | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
   const [notifying, setNotifying] = useState<string | null>(null);
@@ -43,23 +44,28 @@ export default function TasksPage() {
   const byStatus = (status: TaskStatus) => filtered.filter(t => t.status === status);
 
   const handleAddTask = async () => {
-    if (!form.title || !form.assignedTo || !form.deadline) return;
-    const now = new Date().toISOString().split('T')[0];
-    await addTask({
-      id: generateId(),
-      title: form.title,
-      description: form.description,
-      assignedTo: form.assignedTo,
-      assignedBy: session?.userId || 'u1',
-      status: 'pending',
-      priority: form.priority,
-      deadline: form.deadline,
-      createdAt: now,
-      updatedAt: now,
-    });
-    setShowAdd(false);
-    setForm({ title: '', description: '', assignedTo: employees[0]?.id || '', priority: 'medium', deadline: '' });
-    load();
+    if (!form.title || !form.assignedTo || !form.deadline || isAdding) return;
+    setIsAdding(true);
+    try {
+      const now = new Date().toISOString().split('T')[0];
+      await addTask({
+        id: generateId(),
+        title: form.title,
+        description: form.description,
+        assignedTo: form.assignedTo,
+        assignedBy: session?.userId || 'u1',
+        status: 'pending',
+        priority: form.priority,
+        deadline: form.deadline,
+        createdAt: now,
+        updatedAt: now,
+      });
+      setShowAdd(false);
+      setForm({ title: '', description: '', assignedTo: employees[0]?.id || '', priority: 'medium', deadline: '' });
+      load();
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const changeStatus = async (task: Task, status: TaskStatus) => {
@@ -197,7 +203,9 @@ export default function TasksPage() {
           footer={
             <>
               <button className="btn btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleAddTask}>Create Task</button>
+              <button className="btn btn-primary" onClick={handleAddTask} disabled={isAdding}>
+                {isAdding ? 'Creating...' : 'Create Task'}
+              </button>
             </>
           }
         >
