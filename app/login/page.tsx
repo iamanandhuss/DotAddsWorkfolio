@@ -308,16 +308,14 @@ export default function LoginPage() {
                   <span style={{ color: timeLeft > 0 ? 'var(--text-muted)' : 'var(--red)' }}>
                     {timeLeft > 0 ? `Code expires in ${timeLeft}s` : 'Code expired'}
                   </span>
-                  {timeLeft === 0 && (
-                    <button 
-                      type="button" 
-                      onClick={handleResendOtp} 
-                      style={{ background: 'none', border: 'none', color: 'var(--brand-500)', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
-                      disabled={loading}
-                    >
-                      Resend OTP
-                    </button>
-                  )}
+                  <button 
+                    type="button" 
+                    onClick={handleResendOtp} 
+                    style={{ background: 'none', border: 'none', color: 'var(--brand-500)', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                    disabled={loading}
+                  >
+                    Resend OTP
+                  </button>
                 </div>
               </div>
             )}
@@ -361,7 +359,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center', marginTop: 4 }} disabled={loading}>
+            <button type="submit" className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center', marginTop: 4 }} disabled={loading || (step === 'forgot-otp' && timeLeft === 0)}>
               {loading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : null}
               {loading ? 'Processing...' : (
                 step === 'login' ? 'Sign In' :
