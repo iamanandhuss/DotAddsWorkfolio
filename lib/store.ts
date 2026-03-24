@@ -180,13 +180,24 @@ export const getAttendanceByUser = async (userId: string): Promise<AttendanceRec
 
 export const getTodayAttendance = async (userId: string): Promise<AttendanceRecord | undefined> => {
   const today = new Date().toISOString().split('T')[0];
-  const { data, error } = await supabase.from('attendance_records').select('*').eq('user_id', userId).eq('date', today).maybeSingle();
-  if (error || !data) return undefined;
-  return mapAttendance(data);
+  const { data, error } = await supabase.from('attendance_records')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .order('check_in', { ascending: true })
+    .limit(1);
+    
+  if (error || !data || data.length === 0) return undefined;
+  return mapAttendance(data[0]);
 };
 
 export const saveAttendance = async (record: AttendanceRecord): Promise<void> => {
-  const { data: existing } = await supabase.from('attendance_records').select('id').eq('id', record.id).maybeSingle();
+  // Check if an attendance record already exists for this user on this date
+  const { data: existingRecords } = await supabase.from('attendance_records')
+    .select('id')
+    .eq('user_id', record.userId)
+    .eq('date', record.date)
+    .limit(1);
   
   const payload = {
     id: record.id,
@@ -198,10 +209,17 @@ export const saveAttendance = async (record: AttendanceRecord): Promise<void> =>
     working_hours: record.workingHours,
   };
 
-  if (existing) {
-    await supabase.from('attendance_records').update(payload).eq('id', record.id);
+  if (existingRecords && existingRecords.length > 0) {
+    // Force updating the existing record instead of inserting duplicates
+    await supabase.from('attendance_records').update(payload).eq('id', existingRecords[0].id);
   } else {
-    await supabase.from('attendance_records').insert([payload]);
+    // If not found by date, check by exact ID just in case
+    const { data: existingById } = await supabase.from('attendance_records').select('id').eq('id', record.id).maybeSingle();
+    if (existingById) {
+      await supabase.from('attendance_records').update(payload).eq('id', record.id);
+    } else {
+      await supabase.from('attendance_records').insert([payload]);
+    }
   }
 };
 
