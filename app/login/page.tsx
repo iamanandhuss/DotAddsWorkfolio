@@ -62,6 +62,13 @@ export default function LoginPage() {
       if (data.hash) {
         setOtpHash(data.hash);
         setOtpExpiresAt(data.expiresAt);
+        setTimeLeft(Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000)));
+        setMessage('A new OTP has been sent to your email.');
+      } else {
+        // fake resend
+        const fakeExpiry = Date.now() + 60 * 1000;
+        setOtpExpiresAt(fakeExpiry);
+        setTimeLeft(60);
         setMessage('A new OTP has been sent to your email.');
       }
     } catch (err: any) {
@@ -99,9 +106,13 @@ export default function LoginPage() {
         if (data.hash) {
           setOtpHash(data.hash);
           setOtpExpiresAt(data.expiresAt);
+          setTimeLeft(Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000)));
           setStep('forgot-otp');
         } else {
           // generic success response to prevent email enumeration
+          const fakeExpiry = Date.now() + 60 * 1000;
+          setOtpExpiresAt(fakeExpiry);
+          setTimeLeft(60);
           setStep('forgot-otp');
         }
         setLoading(false);
@@ -304,18 +315,32 @@ export default function LoginPage() {
                     required
                   />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', fontSize: '0.75rem' }}>
-                  <span style={{ color: timeLeft > 0 ? 'var(--text-muted)' : 'var(--red)' }}>
-                    {timeLeft > 0 ? `Code expires in ${timeLeft}s` : 'Code expired'}
-                  </span>
-                  <button 
-                    type="button" 
-                    onClick={handleResendOtp} 
-                    style={{ background: 'none', border: 'none', color: 'var(--brand-500)', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
-                    disabled={loading}
-                  >
-                    Resend OTP
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: timeLeft > 0 ? 'var(--brand-500)' : 'var(--red)', fontWeight: 500 }}>
+                      {timeLeft > 0 ? `Resend code in ${timeLeft}s` : 'Code expired'}
+                    </span>
+                    {timeLeft === 0 && (
+                      <button 
+                        type="button" 
+                        onClick={handleResendOtp} 
+                        style={{ background: 'none', border: 'none', color: 'var(--brand-500)', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: '0.75rem' }}
+                        disabled={loading}
+                      >
+                        Resend OTP
+                      </button>
+                    )}
+                  </div>
+                  {timeLeft > 0 && (
+                    <div style={{ width: '100%', height: 2, background: 'var(--border)', borderRadius: 1, overflow: 'hidden' }}>
+                      <div style={{ 
+                        width: `${(timeLeft / 60) * 1000 / 10.0}%`, 
+                        height: '100%', 
+                        background: 'var(--brand-500)', 
+                        transition: 'width 1s linear' 
+                      }} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
