@@ -14,6 +14,7 @@ export default function EmployeeDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord | undefined>();
   const [time, setTime] = useState(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchEm = async () => {
@@ -30,24 +31,33 @@ export default function EmployeeDashboard() {
   }, []);
 
   const handleCheckIn = async () => {
-    if (!session) return;
-    const nowStr = new Date().toTimeString().slice(0, 5);
-    const dateStr = new Date().toISOString().split('T')[0];
-    await saveAttendance({
-      id: generateId(), date: dateStr, userId: session.userId, status: 'present', checkIn: nowStr
-    });
-    setAttendance(await getTodayAttendance(session.userId));
+    if (!session || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const nowStr = new Date().toTimeString().slice(0, 5);
+      const dateStr = new Date().toISOString().split('T')[0];
+      await saveAttendance({
+        id: generateId(), date: dateStr, userId: session.userId, status: 'present', checkIn: nowStr
+      });
+      setAttendance(await getTodayAttendance(session.userId));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCheckOut = async () => {
-    if (!attendance || !session) return;
-    const nowStr = new Date().toTimeString().slice(0, 5);
-    const inDate = new Date(`1970-01-01T${attendance.checkIn}:00`);
-    const outDate = new Date(`1970-01-01T${nowStr}:00`);
-    const hrs = Math.round(((outDate.getTime() - inDate.getTime()) / 1000 / 60 / 60) * 10) / 10;
-
-    await saveAttendance({ ...attendance, checkOut: nowStr, workingHours: Math.max(0, hrs) });
-    setAttendance(await getTodayAttendance(session.userId));
+    if (!attendance || !session || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const nowStr = new Date().toTimeString().slice(0, 5);
+      const inDate = new Date(`1970-01-01T${attendance.checkIn}:00`);
+      const outDate = new Date(`1970-01-01T${nowStr}:00`);
+      const hrs = Math.round(((outDate.getTime() - inDate.getTime()) / 1000 / 60 / 60) * 10) / 10;
+      await saveAttendance({ ...attendance, checkOut: nowStr, workingHours: Math.max(0, hrs) });
+      setAttendance(await getTodayAttendance(session.userId));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!session) return null;
@@ -85,12 +95,12 @@ export default function EmployeeDashboard() {
               </div>
 
               {!attendance?.checkIn ? (
-                <button className="btn btn-primary w-full" onClick={handleCheckIn} style={{ justifyContent: 'center' }}>
-                  <LogIn size={16} /> Check In Now
+                <button className="btn btn-primary w-full" onClick={handleCheckIn} disabled={isSubmitting} style={{ justifyContent: 'center', opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  <LogIn size={16} /> {isSubmitting ? 'Saving...' : 'Check In Now'}
                 </button>
               ) : !attendance.checkOut ? (
-                <button className="btn w-full" onClick={handleCheckOut} style={{ justifyContent: 'center', background: 'var(--yellow)', color: '#000' }}>
-                  <Clock size={16} /> Check Out
+                <button className="btn w-full" onClick={handleCheckOut} disabled={isSubmitting} style={{ justifyContent: 'center', background: 'var(--yellow)', color: '#000', opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  <Clock size={16} /> {isSubmitting ? 'Saving...' : 'Check Out'}
                 </button>
               ) : (
                 <div style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--green)', padding: '0.625rem', borderRadius: 8, fontSize: '0.85rem', fontWeight: 500 }}>

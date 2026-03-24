@@ -13,26 +13,78 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // Forgot password flow
+  const [step, setStep] = useState<'login' | 'forgot-email' | 'forgot-otp' | 'forgot-new-password'>('login');
+  const [resetEmail, setResetEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpHash, setOtpHash] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => { ensureSeeded(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
 
     try {
-      const session = await login(email.trim(), password);
-      if (!session) {
-        setError('Invalid email or password. Please try again.');
+      if (step === 'login') {
+        const session = await login(email.trim(), password);
+        if (!session) {
+          setError('Invalid email or password. Please try again.');
+          setLoading(false);
+          return;
+        }
+        if (session.role === 'admin') router.replace('/admin');
+        else router.replace('/employee');
+      } else if (step === 'forgot-email') {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: resetEmail.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+        
+        if (data.hash) {
+          setOtpHash(data.hash);
+          setStep('forgot-otp');
+        } else {
+          // generic success response to prevent email enumeration
+          setStep('forgot-otp');
+        }
         setLoading(false);
-        return;
+      } else if (step === 'forgot-otp') {
+        if (!otp || otp.length < 6) {
+          setError('Please enter a valid 6-digit OTP');
+          setLoading(false);
+          return;
+        }
+        setStep('forgot-new-password');
+        setLoading(false);
+      } else if (step === 'forgot-new-password') {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: resetEmail.trim(), otp, hash: otpHash, newPassword }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to reset password');
+        
+        setMessage('Password reset successful. Please login with your new password.');
+        setStep('login');
+        setResetEmail('');
+        setOtp('');
+        setOtpHash('');
+        setNewPassword('');
+        setLoading(false);
       }
-      if (session.role === 'admin') router.replace('/admin');
-      else router.replace('/employee');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('An error occurred during sign in.');
+      setError(err.message || 'An error occurred. Please try again.');
       setLoading(false);
     }
   };
@@ -66,58 +118,174 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="card" style={{ boxShadow: 'var(--shadow-lg)' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>Welcome back</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
-            Sign in to continue to your dashboard
-          </p>
+          {step === 'login' && (
+            <>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>Welcome back</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+                Sign in to continue to your dashboard
+              </p>
+            </>
+          )}
+
+          {step === 'forgot-email' && (
+            <>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>Forgot Password</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+                Enter your email address to receive an OTP.
+              </p>
+            </>
+          )}
+
+          {step === 'forgot-otp' && (
+            <>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>Enter OTP</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+                We have sent a 6-digit code to your email.
+              </p>
+            </>
+          )}
+
+          {step === 'forgot-new-password' && (
+            <>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.25rem' }}>New Password</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.5rem' }}>
+                Create a new strong password.
+              </p>
+            </>
+          )}
+
+          {message && (
+            <div style={{
+              background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+              borderRadius: 8, padding: '0.625rem 0.875rem',
+              color: 'var(--green)', fontSize: '0.8rem', marginBottom: '1rem'
+            }}>
+              {message}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* Email */}
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <div className="search-bar">
-                <Mail size={15} />
-                <input
-                  id="email"
-                  type="email"
-                  className="input"
-                  placeholder="you@dotads.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
+            {step === 'login' && (
+              <>
+                {/* Email */}
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <div className="search-bar">
+                    <Mail size={15} />
+                    <input
+                      id="email"
+                      type="email"
+                      className="input"
+                      placeholder="you@dotads.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
 
-            {/* Password */}
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="password"
-                  type={showPw ? 'text' : 'password'}
-                  className="input"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  style={{
-                    position: 'absolute', right: '0.75rem', top: '50%',
-                    transform: 'translateY(-50%)', background: 'none',
-                    border: 'none', color: 'var(--text-muted)',
-                    display: 'flex', alignItems: 'center'
-                  }}
-                >
-                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-                </button>
+                {/* Password */}
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <label className="form-label">Password</label>
+                    <button type="button" onClick={() => { setStep('forgot-email'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: 'var(--brand-500)', fontSize: '0.75rem', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}>
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      id="password"
+                      type={showPw ? 'text' : 'password'}
+                      className="input"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(v => !v)}
+                      style={{
+                        position: 'absolute', right: '0.75rem', top: '50%',
+                        transform: 'translateY(-50%)', background: 'none',
+                        border: 'none', color: 'var(--text-muted)',
+                        display: 'flex', alignItems: 'center'
+                      }}
+                    >
+                      {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 'forgot-email' && (
+              <div className="form-group">
+                <label className="form-label">Registered Email</label>
+                <div className="search-bar">
+                  <Mail size={15} />
+                  <input
+                    type="email"
+                    className="input"
+                    placeholder="you@dotads.com"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
+            {step === 'forgot-otp' && (
+              <div className="form-group">
+                <label className="form-label">6-Digit OTP</label>
+                <div className="search-bar">
+                  <Lock size={15} />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    className="input"
+                    placeholder="123456"
+                    value={otp}
+                    onChange={e => setOtp(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {step === 'forgot-new-password' && (
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    className="input"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(v => !v)}
+                    style={{
+                      position: 'absolute', right: '0.75rem', top: '50%',
+                      transform: 'translateY(-50%)', background: 'none',
+                      border: 'none', color: 'var(--text-muted)',
+                      display: 'flex', alignItems: 'center', cursor: 'pointer'
+                    }}
+                  >
+                    {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {error && (
               <div style={{
@@ -131,10 +299,26 @@ export default function LoginPage() {
 
             <button type="submit" className="btn btn-primary btn-lg w-full" style={{ justifyContent: 'center', marginTop: 4 }} disabled={loading}>
               {loading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : null}
-              {loading ? 'Signing in…' : 'Sign In'}
+              {loading ? 'Processing...' : (
+                step === 'login' ? 'Sign In' :
+                step === 'forgot-email' ? 'Send OTP' :
+                step === 'forgot-otp' ? 'Verify OTP' :
+                'Reset Password'
+              )}
             </button>
-          </form>
 
+            {step !== 'login' && (
+              <button 
+                type="button" 
+                onClick={() => { setStep('login'); setError(''); }} 
+                className="btn w-full" 
+                style={{ justifyContent: 'center', marginTop: -8, background: 'transparent', color: 'var(--text-secondary)' }}
+                disabled={loading}
+              >
+                Back to Login
+              </button>
+            )}
+          </form>
 
         </div>
       </div>

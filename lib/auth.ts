@@ -2,14 +2,32 @@
 
 import type { AuthSession, User } from '@/types';
 import { getUsers } from './store';
+import bcrypt from 'bcryptjs';
 
 const SESSION_KEY = 'ems_session';
 
 export async function login(email: string, password: string): Promise<AuthSession | null> {
   const users = await getUsers();
-  const user = users.find(
-    (u: User) => u.email === email && u.password === password
-  );
+  let user: User | undefined;
+
+  for (const u of users) {
+    if (u.email === email) {
+      const isBcryptHash = u.password.startsWith('$2a$') || u.password.startsWith('$2b$') || u.password.startsWith('$2y$');
+      
+      let isValid = false;
+      if (isBcryptHash) {
+        isValid = bcrypt.compareSync(password, u.password);
+      } else {
+        isValid = u.password === password;
+      }
+
+      if (isValid) {
+        user = u;
+        break;
+      }
+    }
+  }
+
   if (!user) return null;
   const session: AuthSession = {
     userId: user.id,
