@@ -20,9 +20,56 @@ export default function LoginPage() {
   const [resetEmail, setResetEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpHash, setOtpHash] = useState('');
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => { ensureSeeded(); }, []);
+
+  // Timer logic for OTP expiry
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 'forgot-otp' && otpExpiresAt) {
+      interval = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((otpExpiresAt - Date.now()) / 1000));
+        setTimeLeft(remaining);
+        if (remaining === 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      // set immediate value
+      const remaining = Math.max(0, Math.floor((otpExpiresAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [step, otpExpiresAt]);
+
+  const handleResendOtp = async () => {
+    setError('');
+    setMessage('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to resend OTP');
+      
+      if (data.hash) {
+        setOtpHash(data.hash);
+        setOtpExpiresAt(data.expiresAt);
+        setMessage('A new OTP has been sent to your email.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to resend OTP');
+    }
+    setLoading(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +98,7 @@ export default function LoginPage() {
         
         if (data.hash) {
           setOtpHash(data.hash);
+          setOtpExpiresAt(data.expiresAt);
           setStep('forgot-otp');
         } else {
           // generic success response to prevent email enumeration
@@ -69,7 +117,7 @@ export default function LoginPage() {
         const res = await fetch('/api/auth/reset-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: resetEmail.trim(), otp, hash: otpHash, newPassword }),
+          body: JSON.stringify({ email: resetEmail.trim(), otp, hash: otpHash, expiresAt: otpExpiresAt, newPassword }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to reset password');
@@ -79,6 +127,7 @@ export default function LoginPage() {
         setResetEmail('');
         setOtp('');
         setOtpHash('');
+        setOtpExpiresAt(null);
         setNewPassword('');
         setLoading(false);
       }
@@ -254,6 +303,21 @@ export default function LoginPage() {
                     onChange={e => setOtp(e.target.value)}
                     required
                   />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem', fontSize: '0.75rem' }}>
+                  <span style={{ color: timeLeft > 0 ? 'var(--text-muted)' : 'var(--red)' }}>
+                    {timeLeft > 0 ? `Code expires in ${timeLeft}s` : 'Code expired'}
+                  </span>
+                  {timeLeft === 0 && (
+                    <button 
+                      type="button" 
+                      onClick={handleResendOtp} 
+                      style={{ background: 'none', border: 'none', color: 'var(--brand-500)', padding: 0, textDecoration: 'underline', cursor: 'pointer' }}
+                      disabled={loading}
+                    >
+                      Resend OTP
+                    </button>
+                  )}
                 </div>
               </div>
             )}
