@@ -58,7 +58,7 @@ export default function NotificationBell() {
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span style={{
+          <span className="animate-pulse" style={{
             position: 'absolute',
             top: -2,
             right: -2,

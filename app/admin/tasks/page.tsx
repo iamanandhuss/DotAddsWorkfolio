@@ -1,41 +1,69 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Send } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, Trash2, Send, MessageSquare, History, User as UserIcon, CheckCircle2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import Avatar from '@/components/layout/Avatar';
 import Modal from '@/components/ui/Modal';
 import { TaskStatusBadge, PriorityBadge } from '@/components/ui/Badges';
-import { getTasks, getUsers, addTask, updateTask, deleteTask, generateId } from '@/lib/store';
+import { getTasks, getUsers, addTask, updateTask, deleteTask, generateId, getTaskUpdates, addTaskUpdate, getNotifications, markNotificationRead } from '@/lib/store';
 import { getSession } from '@/lib/auth';
-import type { Task, TaskStatus, TaskPriority, User } from '@/types';
+import type { Task, TaskStatus, TaskPriority, User, TaskUpdate, AppNotification } from '@/types';
 
 const STATUSES: TaskStatus[] = ['pending', 'in-progress', 'completed'];
 const STATUS_LABELS: Record<TaskStatus, string> = { pending: 'Pending', 'in-progress': 'In Progress', completed: 'Completed' };
 const STATUS_COLORS: Record<TaskStatus, string> = { pending: 'var(--yellow)', 'in-progress': 'var(--brand-400)', completed: 'var(--green)' };
 
 export default function TasksPage() {
+  const session = getSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [viewTask, setViewTask] = useState<Task | null>(null);
+  const [updates, setUpdates] = useState<TaskUpdate[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [adminNote, setAdminNote] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Task | null>(null);
   const [notifying, setNotifying] = useState<string | null>(null);
   const [form, setForm] = useState({ title: '', description: '', assignedTo: '', priority: 'medium' as TaskPriority, deadline: '' });
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const load = async () => { setTasks(await getTasks()); };
+  const load = async () => { 
+    setTasks(await getTasks()); 
+    if (session) setNotifications(await getNotifications(session.userId));
+    if (viewTask) getTaskUpdates(viewTask.id).then(setUpdates);
+  };
   useEffect(() => {
     load();
+    const interval = setInterval(load, 20000); // Polling for updates
     const fetchUsers = async () => {
       const u = await getUsers();
       setEmployees(u.filter(user => user.role === 'employee'));
     };
     fetchUsers();
-  }, []);
+    return () => clearInterval(interval);
+  }, [session?.userId]);
 
-  const session = getSession();
+  useEffect(() => {
+    if (viewTask) {
+      getTaskUpdates(viewTask.id).then(setUpdates);
+      setAdminNote('');
+      // Mark related notifications as read
+      const unreadForTask = notifications.filter(n => !n.isRead && n.message.includes(viewTask.title));
+      unreadForTask.forEach(n => markNotificationRead(n.id));
+    }
+  }, [viewTask, notifications.length]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [updates]);
+
   const filtered = tasks.filter(t =>
     t.title.toLowerCase().includes(search.toLowerCase()) ||
     employees.find(e => e.id === t.assignedTo)?.name.toLowerCase().includes(search.toLowerCase())
@@ -65,6 +93,34 @@ export default function TasksPage() {
       load();
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleAdminReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!viewTask || !adminNote.trim() || !session) return;
+    
+    setIsUpdating(true);
+    try {
+      const now = new Date().toISOString();
+      const newUpdate: TaskUpdate = {
+        id: generateId(),
+        taskId: viewTask.id,
+        userId: session.userId,
+        userName: session.name,
+        note: adminNote.trim(),
+        statusAtUpdate: viewTask.status,
+        createdAt: now,
+        type: 'admin_note'
+      };
+
+      await addTaskUpdate(newUpdate);
+      setAdminNote('');
+      setUpdates(await getTaskUpdates(viewTask.id));
+    } catch (err) {
+      console.error('Failed to add admin note:', err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -105,13 +161,13 @@ export default function TasksPage() {
       <div className="page-content">
         <div className="page-header">
           <div>
-            <h2 className="page-title">Task Board</h2>
+            <h2 className="page-title">Task Room</h2>
             <p className="page-subtitle">{tasks.length} total tasks</p>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <div className="search-bar">
-              <Search size={15} />
-              <input className="input" placeholder="Search tasks…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 240 }} />
+              <input className="input" placeholder="Search tasks…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 240, paddingLeft: '2.25rem' }} />
+              <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             </div>
             <button className="btn btn-primary" onClick={() => { setForm(f => ({ ...f, assignedTo: employees[0]?.id || '' })); setShowAdd(true); }}>
               <Plus size={16} /> New Task
@@ -135,7 +191,7 @@ export default function TasksPage() {
                 const emp = employees.find(e => e.id === task.assignedTo);
                 const overdue = task.deadline < today && task.status !== 'completed';
                 return (
-                  <div key={task.id} className="task-card" onClick={() => setViewTask(task)}>
+                  <div key={task.id} className="task-card" onClick={() => setViewTask(task)} style={{ cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', gap: '0.5rem' }}>
                       <span style={{ fontWeight: 600, fontSize: '0.875rem', flex: 1 }}>{task.title}</span>
                       <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
@@ -160,17 +216,23 @@ export default function TasksPage() {
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                       {task.description.slice(0, 80)}{task.description.length > 80 ? '…' : ''}
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                      <PriorityBadge priority={task.priority} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                       <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <PriorityBadge priority={task.priority} />
+                        {/* We could add an activity badge here if we had some flag */}
+                       </div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                         {emp && <Avatar name={emp.name} size="sm" />}
+                         <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>{emp?.name.split(' ')[0]}</span>
+                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        {emp && <Avatar name={emp.name} size="sm" />}
-                        <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>{emp?.name.split(' ')[0]}</span>
-                      </div>
                       <span style={{ fontSize: '0.72rem', color: overdue ? 'var(--red)' : 'var(--text-muted)' }}>
                         {overdue ? '⚠ ' : ''}Due {task.deadline}
                       </span>
+                      {notifications.some(n => !n.isRead && n.message.includes(task.title)) && (
+                        <span className="badge badge-blue animate-pulse" style={{ fontSize: '0.65rem' }}>New Update</span>
+                      )}
                     </div>
                     {/* Status changer */}
                     <select
@@ -242,31 +304,157 @@ export default function TasksPage() {
         </Modal>
       )}
 
-      {/* View Task Modal */}
+      {/* View Task Modal with Activity Hub */}
       {viewTask && (
-        <Modal title="Task Details" onClose={() => setViewTask(null)}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <h3 style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{viewTask.title}</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{viewTask.description}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <TaskStatusBadge status={viewTask.status} />
-              <PriorityBadge priority={viewTask.priority} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem' }}>
-              {[
-                ['Assigned To', getEmpName(viewTask.assignedTo)],
-                ['Deadline', viewTask.deadline],
-                ['Created', viewTask.createdAt],
-                ['Updated', viewTask.updatedAt],
-              ].map(([k, v]) => (
-                <div key={k} style={{ background: 'var(--bg-input)', padding: '0.625rem', borderRadius: 8 }}>
-                  <div style={{ color: 'var(--text-muted)', marginBottom: '0.2rem', fontSize: '0.75rem' }}>{k}</div>
-                  <div style={{ fontWeight: 500 }}>{v}</div>
+        <Modal 
+          title="Task Room & Activity Hub" 
+          onClose={() => setViewTask(null)}
+          size="xl"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '2rem', maxHeight: '75vh' }} className="animate-fade-in">
+            
+            {/* Left Column: Activity & Feed */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
+              <div className="glass" style={{ padding: '1.5rem', borderRadius: 20 }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--brand-400)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Task Details</div>
+                <h3 style={{ fontWeight: 700, marginBottom: '0.75rem', fontSize: '1.5rem', color: '#fff' }}>{viewTask.title}</h3>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', lineHeight: 1.6 }}>{viewTask.description}</p>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h5 className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-muted">
+                    <History size={14} /> Activity Feed & Conversation
+                  </h5>
+                  <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>{updates.length} Updates</span>
                 </div>
-              ))}
+                
+                <div 
+                  ref={scrollRef}
+                  style={{ 
+                    flex: 1, overflowY: 'auto', 
+                    padding: '1.5rem', background: 'rgba(0,0,0,0.2)', 
+                    borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
+                  }}
+                  className="flex flex-col gap-6"
+                >
+                  {updates.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', padding: '4rem 0' }}>
+                      <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
+                      Waiting for employee activity...
+                    </div>
+                  ) : (
+                    updates.map(upd => {
+                      const isAdmin = upd.userId.includes('admin') || upd.type.includes('reply') || upd.type.includes('admin');
+                      return (
+                        <div key={upd.id} style={{ display: 'flex', gap: '1rem', flexDirection: isAdmin ? 'row-reverse' : 'row' }}>
+                           <div style={{ 
+                              width: 32, height: 32, borderRadius: '50%', 
+                              background: isAdmin ? 'var(--purple)' : 'var(--bg-hover)', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                              fontSize: '0.75rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.1)'
+                            }}>
+                            {isAdmin ? 'A' : upd.userName.charAt(0)}
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: '0.3rem', color: 'rgba(255,255,255,0.5)' }}>
+                              {upd.userName} • {new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className={`chat-bubble ${isAdmin ? 'chat-bubble-sent' : 'chat-bubble-received'}`} style={{ background: isAdmin ? 'var(--purple)' : 'var(--bg-card)' }}>
+                              {upd.note}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Right Column: Metadata & Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              <div className="gradient-bg" style={{ borderRadius: 20, padding: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <h5 className="font-bold text-xs uppercase tracking-widest text-muted mb-4">Task Management</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {[
+                    ['Assigned To', <div className="flex items-center gap-2"><Avatar name={getEmpName(viewTask.assignedTo)} size="sm" /> {getEmpName(viewTask.assignedTo)}</div>],
+                    ['Deadline', <span style={{ color: viewTask.deadline < today ? 'var(--red)' : 'inherit' }}>{viewTask.deadline}</span>],
+                    ['Priority', <PriorityBadge priority={viewTask.priority} />],
+                    ['Status', (
+                      <select 
+                        className="select" 
+                        style={{ background: 'rgba(255,255,255,0.05)', height: '32px', padding: '0 0.5rem', borderRadius: '8px', fontSize: '0.8rem', width: 'auto' }}
+                        value={viewTask.status}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value as TaskStatus;
+                          const now = new Date().toISOString();
+                          
+                          // Update Task
+                          const updated = { ...viewTask, status: newStatus, updatedAt: now.split('T')[0] };
+                          await updateTask(updated);
+                          setViewTask(updated); // Local state update
+                          
+                          // Log status change
+                          if (session) {
+                            await addTaskUpdate({
+                              id: generateId(),
+                              taskId: viewTask.id,
+                              userId: session.userId,
+                              userName: 'Admin',
+                              note: `Admin changed status to ${newStatus.toUpperCase()}`,
+                              statusAtUpdate: newStatus,
+                              createdAt: now,
+                              type: 'status_change'
+                            });
+                          }
+                          
+                          // Refresh updates
+                          const updatedUpdates = await getTaskUpdates(viewTask.id);
+                          setUpdates(updatedUpdates);
+                          load(); // Refresh main task board
+                        }}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    )],
+                  ].map(([k, v]) => (
+                    <div key={k as string} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem' }}>{k}</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="glass" style={{ borderRadius: 20, padding: '1.5rem' }}>
+                <h5 className="font-bold text-xs uppercase tracking-widest text-muted mb-4">Quick Response</h5>
+                <form onSubmit={handleAdminReply} className="flex flex-col gap-4">
+                  <textarea 
+                    className="textarea" 
+                    rows={4} 
+                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16 }}
+                    placeholder="Provide directions or feedback..." 
+                    value={adminNote}
+                    onChange={e => setAdminNote(e.target.value)}
+                    required
+                  />
+                  <button className="btn btn-primary w-full" style={{ justifyContent: 'center', height: 48, borderRadius: 12 }} disabled={isUpdating || !adminNote.trim()}>
+                    {isUpdating ? <div className="spinner"></div> : <><Send size={16} /> Post Admin Reply</>}
+                  </button>
+                </form>
+              </div>
+
+              <div style={{ flex: 1 }}></div>
+              <button className="btn btn-secondary w-full" onClick={() => setViewTask(null)} style={{ justifyContent: 'center', borderColor: 'rgba(255,255,255,0.1)' }}>
+                 Close Command Center
+              </button>
+            </div>
+
           </div>
         </Modal>
       )}

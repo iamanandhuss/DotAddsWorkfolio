@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase/client';
-import type { User, Task, AttendanceRecord, LeaveRequest, AppNotification } from '@/types';
+import type { User, Task, AttendanceRecord, LeaveRequest, AppNotification, TaskUpdate } from '@/types';
 import { SEED_USERS } from './seed';
 
 // ─── Utility Data Mappers ──────────────────────────────────────────────────
@@ -27,6 +27,17 @@ const mapTask = (row: any): Task => ({
   deadline: row.deadline,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+});
+
+const mapTaskUpdate = (row: any): TaskUpdate => ({
+  id: row.id,
+  taskId: row.task_id,
+  userId: row.user_id,
+  userName: row.user_name,
+  note: row.note,
+  statusAtUpdate: row.status_at_update,
+  createdAt: row.created_at,
+  type: row.type || 'note',
 });
 
 const mapAttendance = (row: any): AttendanceRecord => ({
@@ -165,6 +176,49 @@ export const updateTask = async (updated: Task): Promise<void> => {
 
 export const deleteTask = async (id: string): Promise<void> => {
   await supabase.from('tasks').delete().eq('id', id);
+};
+
+export const getTaskUpdates = async (taskId: string): Promise<TaskUpdate[]> => {
+  const { data } = await supabase.from('task_updates').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
+  return (data || []).map(mapTaskUpdate);
+};
+
+export const addTaskUpdate = async (update: TaskUpdate): Promise<void> => {
+  await supabase.from('task_updates').insert([{
+    id: update.id,
+    task_id: update.taskId,
+    user_id: update.userId,
+    user_name: update.userName,
+    note: update.note,
+    status_at_update: update.statusAtUpdate,
+    created_at: update.createdAt,
+    type: update.type,
+  }]);
+
+    if (update.type === 'status_change') {
+      const { data: task } = await supabase.from('tasks').select('title, assigned_to').eq('id', update.taskId).single();
+      if (task) {
+        // Notify relative party (Admin or Employee)
+        const isAdmin = update.userId.includes('admin');
+        const recipientId = isAdmin ? task.assigned_to : undefined; // Admin -> Employee, Employee -> Admin (undefined = admin)
+
+        fetch('/api/notify/general', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'status_change',
+            userId: update.userId,
+            targetUserId: recipientId,
+            data: { 
+              taskTitle: task.title, 
+              newStatus: update.statusAtUpdate, 
+              note: update.note 
+            }
+          })
+        }).catch(err => console.error('Failed to notify status change:', err));
+      }
+    }
+    // 'note' and 'reply' types are now "Silent Hub" conversations and do not trigger notifications.
 };
 
 // ─── Attendance ───────────────────────────────────────────────────────────────

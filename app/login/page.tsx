@@ -161,14 +161,16 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: 60, height: 60, borderRadius: 16,
-            background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 1rem',
-            boxShadow: '0 8px 24px rgba(37,99,235,0.4)',
-          }}>
-            <Building2 size={28} color="#fff" />
+          <div style={{ margin: '0 auto 1rem', display: 'flex', justifyContent: 'center' }}>
+            <img 
+              src="/dotads_logo.jpeg" 
+              alt="DOT ADS Logo" 
+              style={{ 
+                width: 80, height: 80, borderRadius: 16, 
+                objectFit: 'cover',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.2)' 
+              }} 
+            />
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>DOT ADS</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>

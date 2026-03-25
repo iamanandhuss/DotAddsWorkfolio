@@ -28,11 +28,12 @@ const adminNav: NavItemDef[] = [
 ];
 
 const employeeNav: NavItemDef[] = [
-  { label: 'Dashboard',   href: '/employee',           icon: <LayoutDashboard size={18} /> },
-  { label: 'My Tasks',    href: '/employee/tasks',     icon: <ClipboardList size={18} /> },
-  { label: 'Attendance',  href: '/employee/attendance',icon: <Clock size={18} /> },
-  { label: 'Leave',       href: '/employee/leaves',    icon: <CalendarDays size={18} /> },
-  { label: 'Profile',     href: '/employee/profile',   icon: <FileText size={18} /> },
+  { label: 'Dashboard',       href: '/employee',           icon: <LayoutDashboard size={18} /> },
+  { label: 'My Tasks',        href: '/employee/tasks',     icon: <ClipboardList size={18} /> },
+  { label: 'Task Updations',  href: '/employee/tasks/updations', icon: <CheckSquare size={18} /> },
+  { label: 'Attendance',      href: '/employee/attendance',icon: <Clock size={18} /> },
+  { label: 'Leave',           href: '/employee/leaves',    icon: <CalendarDays size={18} /> },
+  { label: 'Profile',         href: '/employee/profile',   icon: <FileText size={18} /> },
 ];
 
 interface SidebarProps {
@@ -60,13 +61,12 @@ export default function Sidebar({ role }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: 'linear-gradient(135deg, #2563eb, #7c3aed)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0
-        }}>
-          <Building2 size={18} color="#fff" />
+        <div style={{ flexShrink: 0 }}>
+          <img 
+            src="/dotads_logo.jpeg" 
+            alt="DOT ADS Logo" 
+            style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover' }} 
+          />
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: '0.95rem', lineHeight: 1.2 }}>DOT ADS</div>

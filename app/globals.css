@@ -474,11 +474,62 @@ input, textarea, select { font-family: inherit; }
 
 /* ─── Animations ──────────────────────────────────────────────── */
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes slideUp   { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes slideRight{ from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes spin      { to { transform: rotate(360deg); } }
+@keyframes pulse     { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.05); } }
 
-.animate-fade-in  { animation: fadeIn 0.3s ease; }
-.animate-slide-up { animation: slideUp 0.3s ease; }
+.animate-fade-in    { animation: fadeIn 0.3s ease; }
+.animate-slide-up   { animation: slideUp 0.3s ease; }
+.animate-slide-right{ animation: slideRight 0.3s ease-out; }
+.animate-pulse      { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* ─── Premium UI Utilities ────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chat-bubble {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  max-width: 85%;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  position: relative;
+}
+
+.chat-bubble-received {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 2px;
+}
+
+.chat-bubble-sent {
+  background: var(--brand-500);
+  color: white;
+  border-bottom-right-radius: 2px;
+  align-self: flex-end;
+}
+
+.chat-bubble-admin {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid var(--purple);
+  border-bottom-left-radius: 2px;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, rgba(var(--brand-500-rgb), 0.1) 0%, rgba(var(--purple-rgb), 0.1) 100%);
+}
 
 /* ─── Loading Spinner ─────────────────────────────────────────── */
 .spinner {

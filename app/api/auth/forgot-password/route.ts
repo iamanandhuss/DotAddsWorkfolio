@@ -41,8 +41,9 @@ export async function POST(req: Request) {
     // 2. Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 
-    // 3. Hash OTP
-    const hashData = `${otp}.${email}.${OTP_SECRET}`;
+    // 3. Hash OTP with 60 second expiry
+    const expiresAt = Date.now() + 60 * 1000;
+    const hashData = `${otp}.${email}.${expiresAt}.${OTP_SECRET}`;
     const hash = crypto.createHash('sha256').update(hashData).digest('hex');
 
     // 4. Send Email via Nodemailer
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
 
     await transporter.sendMail(mailOptions);
 
-    return NextResponse.json({ success: true, hash });
+    return NextResponse.json({ success: true, hash, expiresAt });
   } catch (error: any) {
     console.error('Error in forgot-password:', error);
     return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });

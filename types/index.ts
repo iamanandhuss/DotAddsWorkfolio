@@ -73,3 +73,14 @@ export interface AppNotification {
   isRead: boolean;
   createdAt: string;
 }
+
+export interface TaskUpdate {
+  id: string;
+  taskId: string;
+  userId: string;
+  userName: string;
+  note: string;
+  statusAtUpdate: TaskStatus;
+  createdAt: string;
+  type: 'note' | 'status_change' | 'reply' | 'admin_note';
+}

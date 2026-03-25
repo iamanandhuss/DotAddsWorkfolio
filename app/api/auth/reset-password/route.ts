@@ -12,14 +12,18 @@ const OTP_SECRET = process.env.OTP_SECRET || 'fallback-secret-key-123';
 
 export async function POST(req: Request) {
   try {
-    const { email, otp, hash, newPassword } = await req.json();
+    const { email, otp, hash, expiresAt, newPassword } = await req.json();
 
-    if (!email || !otp || !hash || !newPassword) {
+    if (!email || !otp || !hash || !expiresAt || !newPassword) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (Date.now() > expiresAt) {
+      return NextResponse.json({ error: 'OTP has expired. Please request a new one.' }, { status: 400 });
+    }
+
     // 1. Verify Hash
-    const expectedHashData = `${otp}.${email}.${OTP_SECRET}`;
+    const expectedHashData = `${otp}.${email}.${expiresAt}.${OTP_SECRET}`;
     const expectedHash = crypto.createHash('sha256').update(expectedHashData).digest('hex');
 
     if (hash !== expectedHash) {
