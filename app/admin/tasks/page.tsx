@@ -60,7 +60,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0; // Newest at top
     }
   }, [updates]);
 
@@ -329,40 +329,61 @@ export default function TasksPage() {
                   <span className="badge badge-gray" style={{ fontSize: '0.65rem' }}>{updates.length} Updates</span>
                 </div>
                 
+                {/* Compact Scrollable Box for Activity */}
                 <div 
                   ref={scrollRef}
                   style={{ 
-                    flex: 1, overflowY: 'auto', 
-                    padding: '1.5rem', background: 'rgba(0,0,0,0.2)', 
-                    borderRadius: 20, border: '1px solid rgba(255,255,255,0.05)',
-                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)'
+                    maxHeight: '300px', 
+                    overflowY: 'auto', 
+                    padding: '1.5rem', 
+                    background: 'rgba(0,0,0,0.2)', 
+                    borderRadius: 20, 
+                    border: '1px solid rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.25rem'
                   }}
-                  className="flex flex-col gap-6"
                 >
                   {updates.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem', padding: '4rem 0' }}>
-                      <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
-                      Waiting for employee activity...
+                    <div className="text-center py-12 text-muted text-sm italic">
+                      No activity recorded yet for this task.
                     </div>
                   ) : (
-                    updates.map(upd => {
-                      const isAdmin = upd.userId.includes('admin') || upd.type.includes('reply') || upd.type.includes('admin');
+                    updates.map((upd, idx) => {
+                      const isEmployee = !upd.userId.includes('admin') && !upd.type.includes('reply') && !upd.type.includes('admin');
+                      const isNewest = idx === 0;
                       return (
-                        <div key={upd.id} style={{ display: 'flex', gap: '1rem', flexDirection: isAdmin ? 'row-reverse' : 'row' }}>
-                           <div style={{ 
-                              width: 32, height: 32, borderRadius: '50%', 
-                              background: isAdmin ? 'var(--purple)' : 'var(--bg-hover)', 
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                              fontSize: '0.75rem', fontWeight: 700, border: '2px solid rgba(255,255,255,0.1)'
-                            }}>
-                            {isAdmin ? 'A' : upd.userName.charAt(0)}
+                        <div key={upd.id} className="animate-fade-in" style={{ 
+                          display: 'flex', gap: '0.85rem',
+                          alignItems: 'flex-start',
+                          flexDirection: isEmployee ? 'row' : 'row-reverse',
+                          opacity: isNewest ? 1 : 0.6,
+                          transform: isNewest ? 'scale(1)' : 'scale(0.98)',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          <div style={{ 
+                            width: 32, height: 32, borderRadius: '50%', 
+                            background: isEmployee ? 'var(--brand-500)' : 'var(--purple)', 
+                            color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: isNewest ? '0 4px 12px rgba(var(--purple-rgb), 0.3)' : 'none'
+                          }}>
+                            {isEmployee ? <UserIcon size={14} /> : <MessageSquare size={14} />}
                           </div>
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 600, marginBottom: '0.3rem', color: 'rgba(255,255,255,0.5)' }}>
-                              {upd.userName} • {new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isEmployee ? 'flex-start' : 'flex-end' }}>
+                            <div className="flex items-baseline gap-2 mb-1.5" style={{ flexDirection: isEmployee ? 'row' : 'row-reverse' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{isEmployee ? upd.userName : 'Admin (You)'}</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
-                            <div className={`chat-bubble ${isAdmin ? 'chat-bubble-sent' : 'chat-bubble-received'}`} style={{ background: isAdmin ? 'var(--purple)' : 'var(--bg-card)' }}>
+                            <div className={`chat-bubble ${isEmployee ? 'chat-bubble-sent' : 'chat-bubble-admin'}`} style={{ fontSize: '0.85rem', padding: '0.6rem 0.9rem' }}>
                               {upd.note}
+                              {upd.type === 'status_change' && (
+                                <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem', opacity: 0.8 }}>
+                                  STATUS: {upd.statusAtUpdate.toUpperCase()}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

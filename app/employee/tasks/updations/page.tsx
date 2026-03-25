@@ -67,7 +67,7 @@ export default function TaskUpdationsPage() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0; // Newest at top
     }
   }, [updates]);
 
@@ -267,49 +267,67 @@ export default function TaskUpdationsPage() {
                   <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
                 </div>
 
-                {fetchingUpdates ? (
-                  <div className="flex justify-center p-12"><div className="spinner"></div></div>
-                ) : updates.length === 0 ? (
-                  <div className="text-center py-12 text-muted text-sm italic">
-                    No activity recorded yet for this task.
-                  </div>
-                ) : (
-                  updates.map((upd, idx) => {
-                    const isAdmin = upd.userId.includes('admin') || upd.type.includes('reply') || upd.type.includes('admin');
-                    return (
-                      <div key={upd.id} className="animate-fade-in" style={{ 
-                        display: 'flex', gap: '0.85rem',
-                        alignItems: 'flex-start',
-                        flexDirection: isAdmin ? 'row' : 'row-reverse'
-                      }}>
-                        <div style={{ 
-                          width: 36, height: 36, borderRadius: '50%', 
-                          background: isAdmin ? 'var(--purple)' : 'var(--brand-500)', 
-                          color: '#fff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                          border: '2px solid rgba(255,255,255,0.1)',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                {/* Compact Scrollable Box for Activity */}
+                <div style={{ 
+                  maxHeight: '300px', 
+                  overflowY: 'auto',
+                  padding: '1.5rem',
+                  background: 'rgba(255,255,255,0.02)',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.5rem'
+                }} ref={scrollRef}>
+                  {fetchingUpdates ? (
+                    <div className="flex justify-center p-8"><div className="spinner"></div></div>
+                  ) : updates.length === 0 ? (
+                    <div className="text-center py-8 text-muted text-sm italic">
+                      No activity recorded yet for this task.
+                    </div>
+                  ) : (
+                    updates.map((upd, idx) => {
+                      const isAdmin = upd.userId.includes('admin') || upd.type.includes('reply') || upd.type.includes('admin');
+                      const isNewest = idx === 0;
+                      return (
+                        <div key={upd.id} className="animate-fade-in" style={{ 
+                          display: 'flex', gap: '0.85rem',
+                          alignItems: 'flex-start',
+                          flexDirection: isAdmin ? 'row' : 'row-reverse',
+                          opacity: isNewest ? 1 : 0.6, // Highlight newest
+                          transform: isNewest ? 'scale(1)' : 'scale(0.98)',
+                          transition: 'all 0.3s ease'
                         }}>
-                          {isAdmin ? <Building2 size={16} /> : <UserIcon size={16} />}
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-start' : 'flex-end' }}>
-                          <div className="flex items-baseline gap-2 mb-1.5" style={{ flexDirection: isAdmin ? 'row' : 'row-reverse' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{isAdmin ? 'Admin' : upd.userName}</span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <div style={{ 
+                            width: 32, height: 32, borderRadius: '50%', 
+                            background: isAdmin ? 'var(--purple)' : 'var(--brand-500)', 
+                            color: '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            boxShadow: isNewest ? '0 4px 12px rgba(var(--brand-500-rgb), 0.3)' : 'none'
+                          }}>
+                            {isAdmin ? <Building2 size={14} /> : <UserIcon size={14} />}
                           </div>
-                          <div className={`chat-bubble ${isAdmin ? 'chat-bubble-admin' : 'chat-bubble-sent'}`}>
-                            {upd.note}
-                            {upd.type === 'status_change' && (
-                              <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '0.7rem', opacity: 0.8 }}>
-                                Changed status to: <strong style={{ textTransform: 'uppercase' }}>{upd.statusAtUpdate}</strong>
-                              </div>
-                            )}
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-start' : 'flex-end' }}>
+                            <div className="flex items-baseline gap-2 mb-1" style={{ flexDirection: isAdmin ? 'row' : 'row-reverse' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{isAdmin ? 'Admin' : upd.userName}</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <div className={`chat-bubble ${isAdmin ? 'chat-bubble-admin' : 'chat-bubble-sent'}`} style={{ fontSize: '0.85rem', padding: '0.6rem 0.9rem' }}>
+                              {upd.note}
+                              {upd.type === 'status_change' && (
+                                <div style={{ marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '0.7rem' }}>
+                                  <strong style={{ opacity: 0.7 }}>STATUS:</strong> {upd.statusAtUpdate.toUpperCase()}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               {/* Bottom Input Section */}

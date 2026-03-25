@@ -179,7 +179,7 @@ export const deleteTask = async (id: string): Promise<void> => {
 };
 
 export const getTaskUpdates = async (taskId: string): Promise<TaskUpdate[]> => {
-  const { data } = await supabase.from('task_updates').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
+  const { data } = await supabase.from('task_updates').select('*').eq('task_id', taskId).order('created_at', { ascending: false });
   return (data || []).map(mapTaskUpdate);
 };
 
