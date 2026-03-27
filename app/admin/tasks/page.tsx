@@ -374,7 +374,7 @@ export default function TasksPage() {
                           </div>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isEmployee ? 'flex-start' : 'flex-end' }}>
                             <div className="flex items-baseline gap-2 mb-1.5" style={{ flexDirection: isEmployee ? 'row' : 'row-reverse' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{isEmployee ? upd.userName : 'Admin (You)'}</span>
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{isEmployee ? upd.userName : (upd.userName || 'Admin (You)')}</span>
                               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div className={`chat-bubble ${isEmployee ? 'chat-bubble-sent' : 'chat-bubble-admin'}`} style={{ fontSize: '0.85rem', padding: '0.6rem 0.9rem' }}>
@@ -424,8 +424,8 @@ export default function TasksPage() {
                               id: generateId(),
                               taskId: viewTask.id,
                               userId: session.userId,
-                              userName: 'Admin',
-                              note: `Admin changed status to ${newStatus.toUpperCase()}`,
+                              userName: session.name,
+                              note: `${session.name} changed status to ${newStatus.toUpperCase()}`,
                               statusAtUpdate: newStatus,
                               createdAt: now,
                               type: 'status_change'

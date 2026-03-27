@@ -311,7 +311,7 @@ export default function TaskUpdationsPage() {
                           </div>
                           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isAdmin ? 'flex-start' : 'flex-end' }}>
                             <div className="flex items-baseline gap-2 mb-1" style={{ flexDirection: isAdmin ? 'row' : 'row-reverse' }}>
-                              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{isAdmin ? 'Admin' : upd.userName}</span>
+                              <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{upd.userName || 'Admin'}</span>
                               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(upd.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <div className={`chat-bubble ${isAdmin ? 'chat-bubble-admin' : 'chat-bubble-sent'}`} style={{ fontSize: '0.85rem', padding: '0.6rem 0.9rem' }}>
