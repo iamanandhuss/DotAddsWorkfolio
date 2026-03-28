@@ -69,9 +69,26 @@ export interface AppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'task_assigned' | 'status_change' | 'leave_request';
+  type: 'task_assigned' | 'status_change' | 'leave_request' | 'meeting_invite';
   isRead: boolean;
   createdAt: string;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description: string;
+  meetingLink: string;
+  datetime: string; // ISO string
+  createdBy: string; // user id
+  createdAt: string;
+  participants?: string[]; // array of user ids
+}
+
+export interface MeetingParticipant {
+  id: string;
+  meetingId: string;
+  userId: string;
 }
 
 export interface TaskUpdate {

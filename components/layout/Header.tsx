@@ -10,9 +10,10 @@ import type { AuthSession } from '@/types';
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  actions?: React.ReactNode;
 }
 
-export default function Header({ title, subtitle }: HeaderProps) {
+export default function Header({ title, subtitle, actions }: HeaderProps) {
   const [session, setSession] = useState<AuthSession | null>(null);
   useEffect(() => { setSession(getSession()); }, []);
   return (
@@ -21,6 +22,7 @@ export default function Header({ title, subtitle }: HeaderProps) {
         <h1 style={{ fontSize: '1.1rem', fontWeight: 700, lineHeight: 1.2 }}>{title}</h1>
         {subtitle && <p style={{ fontSize: '0.775rem', color: 'var(--text-muted)' }}>{subtitle}</p>}
       </div>
+      {actions && <div style={{ display: 'flex', gap: '0.5rem', marginRight: '1rem' }}>{actions}</div>}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <NotificationBell />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

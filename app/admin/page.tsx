@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Users, CheckSquare, Clock, CalendarDays, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, CheckSquare, Clock, CalendarDays, TrendingUp, AlertCircle, ChevronRight } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell
@@ -9,14 +9,16 @@ import {
 import Header from '@/components/layout/Header';
 import Avatar from '@/components/layout/Avatar';
 import { TaskStatusBadge } from '@/components/ui/Badges';
-import { getUsers, getTasks, getAttendance, getLeaves } from '@/lib/store';
-import type { User, Task, AttendanceRecord, LeaveRequest } from '@/types';
+import { getUsers, getTasks, getAttendance, getLeaves, getMeetings } from '@/lib/store';
+import type { User, Task, AttendanceRecord, LeaveRequest, Meeting } from '@/types';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,6 +27,7 @@ export default function AdminDashboard() {
       setTasks(await getTasks());
       setAttendance(await getAttendance());
       setLeaves(await getLeaves());
+      setMeetings(await getMeetings());
     };
     fetchData();
   }, []);
@@ -32,6 +35,10 @@ export default function AdminDashboard() {
   const today = new Date().toISOString().split('T')[0];
   const todayAttendance = attendance.filter(a => a.date === today && a.status === 'present');
   const pendingLeaves = leaves.filter(l => l.status === 'pending');
+  const meetingsToday = meetings.filter(m => m.datetime.split('T')[0] === today);
+  const nextMeeting = meetings
+    .filter(m => new Date(m.datetime) > new Date())
+    .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
 
   // Chart: Task completion per employee
   const taskChartData = users.map(u => {
@@ -66,7 +73,7 @@ export default function AdminDashboard() {
     { label: 'Total Employees', value: users.length, icon: <Users size={20} />, color: '#2563eb', bg: 'rgba(37,99,235,0.15)' },
     { label: 'Active Tasks', value: tasks.filter(t => t.status !== 'completed').length, icon: <CheckSquare size={20} />, color: '#7c3aed', bg: 'rgba(124,58,237,0.15)' },
     { label: 'Present Today', value: todayAttendance.length, icon: <Clock size={20} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
-    { label: 'Pending Leaves', value: pendingLeaves.length, icon: <CalendarDays size={20} />, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    { label: 'Meetings Today', value: meetingsToday.length, icon: <CalendarDays size={20} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
   ];
 
   const getUserName = (id: string) => users.find(u => u.id === id)?.name || 'Unknown';
@@ -75,6 +82,39 @@ export default function AdminDashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <Header title="Dashboard" subtitle={`Welcome back! ${new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}`} />
       <div className="page-content">
+
+        {/* Meeting Alert */}
+        {nextMeeting && (
+          <div className="card" style={{ 
+            background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))', 
+            color: '#fff', 
+            marginBottom: '1.5rem',
+            padding: '1rem 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: 12,
+            border: 'none',
+            boxShadow: '0 4px 12px rgba(59,130,246,0.3)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.6rem', borderRadius: 10 }}>
+                <CalendarDays size={20} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', opacity: 0.9, marginBottom: '0.1rem' }}>Upcoming Meeting</div>
+                <div style={{ fontWeight: 600 }}>{nextMeeting.title}</div>
+              </div>
+              <div style={{ height: '24px', width: '1px', background: 'rgba(255,255,255,0.3)', margin: '0 0.5rem' }} />
+              <div style={{ fontSize: '0.85rem' }}>
+                {new Date(nextMeeting.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <Link href="/admin/meetings" className="btn btn-sm" style={{ background: '#fff', color: 'var(--brand-500)', border: 'none' }}>
+              View Details <ChevronRight size={14} />
+            </Link>
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.75rem' }}>

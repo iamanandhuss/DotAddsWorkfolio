@@ -24,6 +24,7 @@ const adminNav: NavItemDef[] = [
   { label: 'Tasks',       href: '/admin/tasks',        icon: <CheckSquare size={18} /> },
   { label: 'Attendance',  href: '/admin/attendance',   icon: <Clock size={18} /> },
   { label: 'Leaves',      href: '/admin/leaves',       icon: <CalendarDays size={18} /> },
+  { label: 'Meetings',    href: '/admin/meetings',     icon: <CalendarDays size={18} /> },
   { label: 'Reports',     href: '/admin/reports',      icon: <BarChart2 size={18} /> },
 ];
 
@@ -33,6 +34,7 @@ const employeeNav: NavItemDef[] = [
   { label: 'Task Updations',  href: '/employee/tasks/updations', icon: <CheckSquare size={18} /> },
   { label: 'Attendance',      href: '/employee/attendance',icon: <Clock size={18} /> },
   { label: 'Leave',           href: '/employee/leaves',    icon: <CalendarDays size={18} /> },
+  { label: 'Meetings',        href: '/employee/meetings',  icon: <CalendarDays size={18} /> },
   { label: 'Profile',         href: '/employee/profile',   icon: <FileText size={18} /> },
 ];
 

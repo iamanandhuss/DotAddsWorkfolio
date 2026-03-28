@@ -1,5 +1,5 @@
 import { supabase } from '@/utils/supabase/client';
-import type { User, Task, AttendanceRecord, LeaveRequest, AppNotification, TaskUpdate } from '@/types';
+import type { User, Task, AttendanceRecord, LeaveRequest, AppNotification, TaskUpdate, Meeting, MeetingParticipant } from '@/types';
 import { SEED_USERS } from './seed';
 
 // ─── Utility Data Mappers ──────────────────────────────────────────────────
@@ -71,6 +71,22 @@ const mapNotification = (row: any): AppNotification => ({
   type: row.type,
   isRead: row.is_read,
   createdAt: row.created_at,
+});
+
+const mapMeeting = (row: any): Meeting => ({
+  id: row.id,
+  title: row.title,
+  description: row.description || '',
+  meetingLink: row.meeting_link || '',
+  datetime: row.datetime,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+});
+
+const mapMeetingParticipant = (row: any): MeetingParticipant => ({
+  id: row.id,
+  meetingId: row.meeting_id,
+  userId: row.user_id,
 });
 
 export async function ensureSeeded(): Promise<void> {
@@ -341,6 +357,81 @@ export const addNotification = async (notif: Omit<AppNotification, 'id' | 'creat
 
 export const markNotificationRead = async (id: string): Promise<void> => {
   await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+};
+
+// ─── Meetings ─────────────────────────────────────────────────────────────────
+export const cleanupExpiredMeetings = async (): Promise<void> => {
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  // Delete meetings where datetime is older than 30 minutes ago
+  await supabase.from('meetings').delete().lt('datetime', thirtyMinutesAgo);
+};
+
+export const getMeetings = async (): Promise<Meeting[]> => {
+  await cleanupExpiredMeetings();
+  const { data } = await supabase.from('meetings').select('*').order('datetime', { ascending: false });
+  const meetings = (data || []).map(mapMeeting);
+  
+  // Fetch participants for each meeting
+  for (const m of meetings) {
+    const { data: parts } = await supabase.from('meeting_participants').select('user_id').eq('meeting_id', m.id);
+    m.participants = (parts || []).map(p => p.user_id);
+  }
+  return meetings;
+};
+
+export const getMeetingsByUser = async (userId: string): Promise<Meeting[]> => {
+  await cleanupExpiredMeetings();
+  const { data: registrations } = await supabase.from('meeting_participants').select('meeting_id').eq('user_id', userId);
+  const ids = (registrations || []).map(r => r.meeting_id);
+  if (ids.length === 0) return [];
+
+  const { data } = await supabase.from('meetings').select('*').in('id', ids).order('datetime', { ascending: false });
+  const meetings = (data || []).map(mapMeeting);
+  return meetings;
+};
+
+export const addMeeting = async (meeting: Meeting, participantIds: string[]): Promise<void> => {
+  await supabase.from('meetings').insert([{
+    id: meeting.id,
+    title: meeting.title,
+    description: meeting.description,
+    meeting_link: meeting.meetingLink,
+    datetime: meeting.datetime,
+    created_by: meeting.createdBy,
+  }]);
+
+  if (participantIds.length > 0) {
+    const parts = participantIds.map(uid => ({
+      id: generateId(),
+      meeting_id: meeting.id,
+      user_id: uid,
+    }));
+    await supabase.from('meeting_participants').insert(parts);
+  }
+};
+
+export const updateMeeting = async (meeting: Meeting, participantIds: string[]): Promise<void> => {
+  await supabase.from('meetings').update({
+    title: meeting.title,
+    description: meeting.description,
+    meeting_link: meeting.meetingLink,
+    datetime: meeting.datetime,
+  }).eq('id', meeting.id);
+
+  // Simple sync: delete current participants and re-insert
+  await supabase.from('meeting_participants').delete().eq('meeting_id', meeting.id);
+  if (participantIds.length > 0) {
+    const parts = participantIds.map(uid => ({
+      id: generateId(),
+      meeting_id: meeting.id,
+      user_id: uid,
+    }));
+    await supabase.from('meeting_participants').insert(parts);
+  }
+};
+
+export const deleteMeeting = async (id: string): Promise<void> => {
+  await supabase.from('meetings').delete().eq('id', id);
 };
 
 // ─── Utility ─────────────────────────────────────────────────────────────────

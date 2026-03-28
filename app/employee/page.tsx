@@ -5,9 +5,10 @@ import { Clock, CheckSquare, LogIn, AlertTriangle } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { TaskStatusBadge, PriorityBadge } from '@/components/ui/Badges';
 import { getSession } from '@/lib/auth';
-import { getTasksByUser, getTodayAttendance, saveAttendance, generateId } from '@/lib/store';
-import type { Task, AttendanceRecord, AuthSession } from '@/types';
+import { getTasksByUser, getTodayAttendance, saveAttendance, generateId, getMeetingsByUser } from '@/lib/store';
+import type { Task, AttendanceRecord, AuthSession, Meeting } from '@/types';
 import Link from 'next/link';
+import { ChevronRight, CalendarDays, Sparkles } from 'lucide-react';
 
 export default function EmployeeDashboard() {
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -15,6 +16,7 @@ export default function EmployeeDashboard() {
   const [attendance, setAttendance] = useState<AttendanceRecord | undefined>();
   const [time, setTime] = useState(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nextMeeting, setNextMeeting] = useState<Meeting | undefined>();
 
   useEffect(() => {
     const fetchEm = async () => {
@@ -23,6 +25,11 @@ export default function EmployeeDashboard() {
         setSession(s);
         setTasks(await getTasksByUser(s.userId));
         setAttendance(await getTodayAttendance(s.userId));
+        const myMeetings = await getMeetingsByUser(s.userId);
+        const next = myMeetings
+            .filter(m => new Date(m.datetime) > new Date())
+            .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())[0];
+        setNextMeeting(next);
       }
     };
     fetchEm();
@@ -72,6 +79,44 @@ export default function EmployeeDashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <Header title="My Dashboard" subtitle={`Welcome back, ${session.name.split(' ')[0]}!`} />
       <div className="page-content">
+
+        {/* Meeting Alert */}
+        {nextMeeting && (
+          <div className="card" style={{ 
+            background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))', 
+            color: '#fff', 
+            marginBottom: '1.5rem',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: 12,
+            border: 'none',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.5rem', borderRadius: 8 }}>
+                <CalendarDays size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.9 }}>Next Meeting</div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{nextMeeting.title}</div>
+              </div>
+              <div style={{ fontSize: '0.8rem', marginLeft: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.2rem 0.5rem', borderRadius: 4 }}>
+                {new Date(nextMeeting.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {nextMeeting.meetingLink && (
+                    <a href={nextMeeting.meetingLink} target="_blank" className="btn btn-sm" style={{ background: '#fff', color: 'var(--brand-500)', border: 'none' }}>
+                        Join Now
+                    </a>
+                )}
+                <Link href="/employee/meetings" className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}>
+                    Details
+                </Link>
+            </div>
+          </div>
+        )}
 
         {/* Top Row: Attendance + Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: '1.5rem', marginBottom: '2rem' }}>
